@@ -1,0 +1,12 @@
+[package]
+name        = "fixpoint-experiment"
+description = "Experiements with Flix's fixpoint Datalog engine."
+version     = "0.1.0"
+flix        = "0.42.0"
+license     = "Apache-2.0"
+authors     = ["Stephen Tetley <stephen.tetley@gmail.com>"]
+
+[dependencies]
+"github:stephentetley/flix-pretty"              = "0.4.0"
+
+
