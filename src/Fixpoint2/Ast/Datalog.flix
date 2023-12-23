@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-mod Fixpoint2.Ast {
+mod Fixpoint2.Ast.Datalog {
 
     use Text.Pretty
     use Text.Pretty.{pPrintPrec}
     use Text.PrettyPrint.{Doc, optionalParens, <<>>, text}
     use Text.{appPrec, PrettyLevel}
-
-    use Fixpoint2.Ram.Ast.{RamSym}
-    use Fixpoint2.Ast.VarSym.{VarSym}
-    use Fixpoint2.Ast.Fixity.{Loose, Fixed}
-    use Fixpoint2.Shared.{Denotation, PredSym}
+    use Fixpoint2.Ast.Ram.{RamSym}
+    use Fixpoint2.Ast.Shared.{Denotation, PredSym}
     use Fixpoint2.PredSymsOf
     use Fixpoint2.PredSymsOf.{predSymsOf}
     use Fixpoint2.SubstitutePredSym
     use Fixpoint2.SubstitutePredSym.{substitute}
+    use Fixpoint2.Ast.Datalog.VarSym.{VarSym}
+    use Fixpoint2.Ast.Datalog.Fixity.{Loose, Fixed}
 
     @Internal
     pub enum PrecedenceGraph(Set[PrecedenceEdge])
@@ -206,7 +205,7 @@ mod Fixpoint2.Ast {
                 StringBuilder.toString(sb)
             }
             case Datalog.Model(db) => region rc {
-                use Fixpoint2.Ram.Ast.toDenotation;
+                use Fixpoint2.Ast.Ram.toDenotation;
                 let sb = StringBuilder.new(rc);
                 Map.forEach(ramSym -> rel -> match toDenotation(ramSym) {
                     case Denotation.Relational => Map.forEach((tuple, _) -> {

@@ -17,15 +17,15 @@
 mod Fixpoint2.Solver {
 
     use Boxable.{box, unbox}
-    use Fixpoint2.Ast.{Datalog, Constraint, HeadTerm}
-    use Fixpoint2.Ast.Datalog.{Datalog, Model, Join}
-    use Fixpoint2.Ast.Constraint.Constraint
-    use Fixpoint2.Ast.HeadPredicate.HeadAtom
-    use Fixpoint2.Ram.Ast.RamSym
-    use Fixpoint2.Shared.PredSym
-    use Fixpoint2.Shared.PredSym.{PredSym}
-    use Fixpoint2.Shared.Denotation
-    use Fixpoint2.Shared.Denotation.{Relational, Latticenal}
+    use Fixpoint2.Ast.Datalog.{Datalog, Constraint, HeadTerm}
+    use Fixpoint2.Ast.Datalog.Datalog.{Datalog, Model, Join}
+    use Fixpoint2.Ast.Datalog.Constraint.Constraint
+    use Fixpoint2.Ast.Datalog.HeadPredicate.HeadAtom
+    use Fixpoint2.Ast.Ram.RamSym
+    use Fixpoint2.Ast.Shared.PredSym
+    use Fixpoint2.Ast.Shared.PredSym.{PredSym}
+    use Fixpoint2.Ast.Shared.Denotation
+    use Fixpoint2.Ast.Shared.Denotation.{Relational, Latticenal}
     use Fixpoint2.Interpreter.Database
 
     ///
@@ -75,7 +75,7 @@ mod Fixpoint2.Solver {
         case (Datalog(edb1, idb1), Datalog(edb2, idb2)) =>
             Datalog(Vector.append(edb1, edb2), Vector.append(idb1, idb2))
         case (Model(db1), Model(db2)) =>
-            use Fixpoint2.Ram.Ast.toDenotation;
+            use Fixpoint2.Ast.Ram.toDenotation;
             let union = ramSym -> match toDenotation(ramSym) {
                 case Relational => Map.union
                 case Latticenal(_, _, lub, _) => Map.unionWith(lub)
@@ -717,7 +717,7 @@ mod Fixpoint2.Solver {
             pFacts |> MutList.toVector
         }
         case Model(db) => region rc {
-            use Fixpoint2.Ram.Ast.toDenotation;
+            use Fixpoint2.Ast.Ram.toDenotation;
             let pFacts = MutList.new(rc);
             let query = ramSym -> match ramSym {
                 case RamSym.Full(predSym, _, _) => match predSym <=> p {

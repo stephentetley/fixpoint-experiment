@@ -16,7 +16,7 @@
 
 mod Fixpoint2 {
 
-    use Fixpoint2.Shared.PredSym
+    use Fixpoint2.Ast.Shared.PredSym
 
     ///
     /// A trait for types that contain predicate symbols.

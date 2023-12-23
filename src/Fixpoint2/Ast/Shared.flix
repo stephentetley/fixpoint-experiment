@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-mod Fixpoint2.Shared {
+mod Fixpoint2.Ast.Shared {
 
     @Internal
     pub enum PredSym with Eq, Order {

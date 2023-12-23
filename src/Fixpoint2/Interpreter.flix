@@ -16,9 +16,9 @@
 
 mod Fixpoint2.Interpreter {
 
-    use Fixpoint2.Ram.Ast.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
-    use Fixpoint2.Shared.Denotation
-    use Fixpoint2.Ram.Ast.{toDenotation}
+    use Fixpoint2.Ast.Ram.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
+    use Fixpoint2.Ast.Shared.Denotation
+    use Fixpoint2.Ast.Ram.{toDenotation}
 
     pub type alias Database[v: Type, r: Region] = MutMap[RamSym[v], MutMap[Vector[v], v, r], r]
     pub type alias SearchEnv[v: Type, r: Region] = (Array[Vector[v], r], Array[v, r])

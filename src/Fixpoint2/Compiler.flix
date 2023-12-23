@@ -16,18 +16,16 @@
 
 mod Fixpoint2.Compiler {
 
-    use Fixpoint2.Ram.Ast.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
-    use Fixpoint2.Ast.{Datalog, Constraint, BodyPredicate, BodyTerm, HeadTerm, Polarity, VarSym}
-    use Fixpoint2.Ast.Datalog.Datalog
-    use Fixpoint2.Ast.Constraint.Constraint
-    use Fixpoint2.Ast.HeadPredicate.HeadAtom
-    use Fixpoint2.Ast.BodyPredicate.{BodyAtom}
-    use Fixpoint2.Ast.BodyPredicate.{Functional}
-    use Fixpoint2.Ast.BodyPredicate.{Guard0, Guard1, Guard2, Guard3, Guard4, Guard5}
-    use Fixpoint2.Shared.{Denotation}
-    use Fixpoint2.Shared.isRelational
-    use Fixpoint2.Shared.PredSym
-    use Fixpoint2.Shared.PredSym.PredSym
+    use Fixpoint2.Ast.Datalog.{Datalog, Constraint, BodyPredicate, BodyTerm, HeadTerm, Polarity, VarSym}
+    use Fixpoint2.Ast.Datalog.Datalog.{Datalog}
+    use Fixpoint2.Ast.Datalog.Constraint.Constraint
+    use Fixpoint2.Ast.Datalog.HeadPredicate.HeadAtom
+    use Fixpoint2.Ast.Datalog.BodyPredicate.{BodyAtom, Functional, Guard0, Guard1, Guard2, Guard3, Guard4, Guard5}
+    use Fixpoint2.Ast.Ram.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
+    use Fixpoint2.Ast.Shared.Denotation
+    use Fixpoint2.Ast.Shared.isRelational
+    use Fixpoint2.Ast.Shared.PredSym
+    use Fixpoint2.Ast.Shared.PredSym.{PredSym}
 
     ///
     /// Compile the given Datalog program `d` to RAM.

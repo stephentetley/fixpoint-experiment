@@ -16,9 +16,9 @@
 
 mod Fixpoint2.Debugging {
 
-    use Fixpoint2.Ast.Datalog
-    use Fixpoint2.Ram.Ast.RamStmt
-    use Fixpoint2.Shared.PredSym
+    use Fixpoint2.Ast.Datalog.Datalog
+    use Fixpoint2.Ast.Ram.RamStmt
+    use Fixpoint2.Ast.Shared.PredSym
 
     ///
     /// Invoked before the fixpoint computation.

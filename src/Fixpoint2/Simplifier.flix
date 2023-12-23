@@ -16,8 +16,8 @@
 
 mod Fixpoint2.Simplifier {
 
-    use Fixpoint2.Ram.Ast.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
-    use Fixpoint2.Ram.Ast.RamTerm.{RowLoad, LoadLatVar, Lit, Meet}
+    use Fixpoint2.Ast.Ram.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
+    use Fixpoint2.Ast.Ram.RamTerm.{RowLoad, LoadLatVar, Lit, Meet}
 
     ///
     /// Optimize and simplify `stmt` by deleting redundant code and reordering code.

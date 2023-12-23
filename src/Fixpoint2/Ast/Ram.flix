@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-mod Fixpoint2.Ram.Ast {
+mod Fixpoint2.Ast.Ram {
 
-    use Fixpoint2.Shared.{Denotation, PredSym}
+    use Fixpoint2.Ast.Shared.{Denotation, PredSym}
     use Fixpoint2.PredSymsOf
     use Fixpoint2.SubstitutePredSym
 

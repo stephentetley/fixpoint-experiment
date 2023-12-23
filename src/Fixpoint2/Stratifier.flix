@@ -16,14 +16,14 @@
 
 mod Fixpoint2.Stratifier {
 
-    use Fixpoint2.Ast.{Datalog, Constraint, HeadPredicate, BodyPredicate, Polarity, Fixity, PrecedenceGraph}
-    use Fixpoint2.Ast.Datalog.{Datalog, Model, Join}
-    use Fixpoint2.Ast.PrecedenceGraph.PrecedenceGraph
-    use Fixpoint2.Ast.PrecedenceEdge.{WeakEdge, StrongEdge}
-    use Fixpoint2.Ast.Constraint.Constraint
-    use Fixpoint2.Ast.HeadPredicate.HeadAtom
-    use Fixpoint2.Ast.BodyPredicate.BodyAtom
-    use Fixpoint2.Shared.PredSym
+    use Fixpoint2.Ast.Datalog.{Datalog, Constraint, HeadPredicate, BodyPredicate, Polarity, Fixity, PrecedenceGraph}
+    use Fixpoint2.Ast.Datalog.Datalog.{Datalog, Model, Join}
+    use Fixpoint2.Ast.Datalog.PrecedenceGraph.{PrecedenceGraph}
+    use Fixpoint2.Ast.Datalog.PrecedenceEdge.{WeakEdge, StrongEdge}
+    use Fixpoint2.Ast.Datalog.Constraint.{Constraint}
+    use Fixpoint2.Ast.Datalog.HeadPredicate.{HeadAtom}
+    use Fixpoint2.Ast.Datalog.BodyPredicate.{BodyAtom}
+    use Fixpoint2.Ast.Shared.PredSym
 
     ///
     /// Compute a stratification with Ullman's algorithm.
