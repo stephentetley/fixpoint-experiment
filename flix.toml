@@ -1,6 +1,6 @@
 [package]
 name        = "fixpoint-experiment"
-description = "Experiements with Flix's fixpoint Datalog engine."
+description = "An experiment refactoring Flix's fixpoint Datalog engine."
 version     = "0.1.0"
 flix        = "0.42.0"
 license     = "Apache-2.0"
