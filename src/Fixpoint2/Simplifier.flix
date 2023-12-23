@@ -55,7 +55,7 @@ mod Fixpoint2.Simplifier {
                     // // merge B into A
                     // // If A and B have the same arity.
                     // case RelOp.Search(varB, relB, RelOp.Project(tuple, relA)) =>
-                    //     use Fixpoint.Ram.arityOf;
+                    //     use Fixpoint2.Ram.arityOf;
                     //     let isCopy =
                     //         Vector.map(t -> match t {
                     //             case RamTerm.RowLoad(var, i) => if (varB == var) i else -1

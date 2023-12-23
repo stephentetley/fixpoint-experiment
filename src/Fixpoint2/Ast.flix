@@ -25,7 +25,10 @@ mod Fixpoint2.Ast {
     use Fixpoint2.Ast.VarSym.{VarSym}
     use Fixpoint2.Ast.Fixity.{Loose, Fixed}
     use Fixpoint2.Shared.{Denotation, PredSym}
-
+    use Fixpoint2.PredSymsOf
+    use Fixpoint2.PredSymsOf.{predSymsOf}
+    use Fixpoint2.SubstitutePredSym
+    use Fixpoint2.SubstitutePredSym.{substitute}
 
     @Internal
     pub enum PrecedenceGraph(Set[PrecedenceEdge])
@@ -105,6 +108,81 @@ mod Fixpoint2.Ast {
         case Negative
     }
 
+    instance PredSymsOf[Datalog[v]] {
+        pub def predSymsOf(x: Datalog[v]): Set[PredSym] = match x {
+            case Datalog.Datalog(facts, rules) =>
+                let factSyms = facts |> Vector.map(predSymsOf) |> Monoid.fold;
+                let ruleSyms = rules |> Vector.map(predSymsOf) |> Monoid.fold;
+                factSyms ++ ruleSyms
+            case Datalog.Model(m)              => Map.keysOf(m) |> Set.toList |> List.map(predSymsOf) |> Monoid.fold
+            case Datalog.Join(v1, v2)          => predSymsOf(v1) ++ predSymsOf(v2)
+        }
+    }
+
+    instance SubstitutePredSym[Datalog[v]] {
+        pub def substitute(x: Datalog[v], s: Map[PredSym, PredSym]): Datalog[v] = match x {
+            case Datalog.Datalog(facts, rules) =>
+                let newFacts = Vector.map(c -> substitute(c, s), facts);
+                let newRules = Vector.map(c -> substitute(c, s), rules);
+                Datalog.Datalog(newFacts, newRules)
+            case Datalog.Model(m) =>
+                def f(macc, sym, v) = {
+                    let newSym = substitute(sym, s);
+                    Map.insert(newSym, v, macc)
+                };
+                Datalog.Model(Map.foldLeftWithKey(f, Map.empty(), m))
+            case Datalog.Join(v1, v2) => Datalog.Join(substitute(v1, s), substitute(v2, s))
+        }
+    }
+
+    instance PredSymsOf[HeadPredicate[v]] {
+        pub def predSymsOf(x: HeadPredicate[v]): Set[PredSym] = match x {
+            case HeadPredicate.HeadAtom(predSym, _, _ ) => Set.singleton(predSym)
+        }
+    }
+
+    instance SubstitutePredSym[HeadPredicate[v]] {
+        pub def substitute(x: HeadPredicate[v], s: Map[PredSym, PredSym]): HeadPredicate[v] = match x {
+            case HeadPredicate.HeadAtom(predSym, den, terms) =>
+                let newSym = Map.getWithDefault(predSym, predSym, s);
+                HeadPredicate.HeadAtom(newSym, den, terms)
+        }
+    }
+
+    instance PredSymsOf[BodyPredicate[v]] {
+        pub def predSymsOf(x: BodyPredicate[v]): Set[PredSym] = match x {
+            case BodyPredicate.BodyAtom(predSym, _, _, _, _)    => Set.singleton(predSym)
+            case _                                              => Set.empty()
+        }
+    }
+
+    instance SubstitutePredSym[BodyPredicate[v]] {
+        pub def substitute(x: BodyPredicate[v], s: Map[PredSym, PredSym]): BodyPredicate[v] = match x {
+            case BodyPredicate.BodyAtom(predSym, den, polarity, fixity, terms) =>
+                let newSym = Map.getWithDefault(predSym, predSym, s);
+                BodyPredicate.BodyAtom(newSym, den, polarity, fixity, terms)
+            case _                             => x
+        }
+    }
+
+    instance PredSymsOf[Constraint[v]] {
+        pub def predSymsOf(x: Constraint[v]): Set[PredSym] = match x {
+            case Constraint.Constraint(head, body) =>
+                let headSyms = predSymsOf(head);
+                let bodySyms = Vector.map(predSymsOf, body);
+                headSyms ++ Monoid.fold(bodySyms)
+        }
+    }
+
+    instance SubstitutePredSym[Constraint[v]] {
+        pub def substitute(x: Constraint[v], s: Map[PredSym, PredSym]): Constraint[v] = match x {
+            case Constraint.Constraint(head, body) =>
+                let newHead = substitute(head, s);
+                let newBody = Vector.map(p -> substitute(p, s), body);
+                Constraint.Constraint(newHead, newBody)
+        }
+    }
+
     instance Pretty[VarSym] {
         pub override def pPrintPrec(l: PrettyLevel, p: Int32, x: VarSym): Doc = match x {
             case VarSym(x1) => optionalParens(p > appPrec(), text("VarSym") <<>> Pretty.pPrintPrec(l, appPrec() + 1, x1))
@@ -118,6 +196,38 @@ mod Fixpoint2.Ast {
         }
     }
 
+    instance ToString[Datalog[v]] {
+        pub def toString(cs: Datalog[v]): String = match cs {
+            case Datalog.Datalog(facts, rules) => region rc {
+                let sb = StringBuilder.new(rc);
+                let appendConstraint = f -> StringBuilder.appendLineWith!(ToString.toString, f, sb);
+                foreach (f <- facts) appendConstraint(f);
+                foreach (ru <- rules) appendConstraint(ru);
+                StringBuilder.toString(sb)
+            }
+            case Datalog.Model(db) => region rc {
+                use Fixpoint2.Ram.Ast.toDenotation;
+                let sb = StringBuilder.new(rc);
+                Map.forEach(ramSym -> rel -> match toDenotation(ramSym) {
+                    case Denotation.Relational => Map.forEach((tuple, _) -> {
+                        let tupleString = tuple |> Vector.map(Debug.stringify) |> Vector.join(", ");
+                        StringBuilder.appendLine!("${ramSym}(${tupleString}).", sb)
+                    }, rel)
+                    case Denotation.Latticenal(_) => Map.forEach((tuple, lat) -> {
+                        let tupleString = tuple |> Vector.map(Debug.stringify) |> Vector.join(", ");
+                        StringBuilder.appendLine!("${ramSym}(${tupleString}; %{lat}).", sb)
+                    }, rel)
+                }, db);
+                StringBuilder.toString(sb)
+            }
+            case Datalog.Join(d1, d2) => region rc {
+                let sb = StringBuilder.new(rc);
+                StringBuilder.appendLine!(ToString.toString(d1), sb);
+                StringBuilder.appendLine!(ToString.toString(d2), sb);
+                StringBuilder.toString(sb)
+            }
+        }
+    }
 
     instance ToString[Constraint[v]] {
         pub def toString(c: Constraint[v]): String =

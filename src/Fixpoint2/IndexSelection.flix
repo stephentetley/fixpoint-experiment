@@ -82,8 +82,8 @@ mod Fixpoint2.IndexSelection {
     ///
     def queryOp(op: RelOp[v], freeVars: Set[RowVar]): (RelOp[v], Vector[BoolExp[v]]) = match op {
         case RelOp.Search(var, ramSym, body) =>
-            use Fixpoint.Ram.BoolExp.Eq;
-            use Fixpoint.Ram.RamTerm.{RowLoad, Lit};
+            use Fixpoint2.Ram.Ast.BoolExp.{Eq};
+            use Fixpoint2.Ram.Ast.RamTerm.{RowLoad, Lit};
             let (innerOp, innerGround) = queryOp(body, Set.insert(var, freeVars));
             let (ground, notGround) = Vector.partition(isExpGround(freeVars), innerGround);
             let (varQuery, rest1) =
@@ -133,8 +133,8 @@ mod Fixpoint2.IndexSelection {
     }
 
     def longestPrefixQuery(varQuery: Vector[BoolExp[v]]): (Vector[BoolExp[v]], Vector[BoolExp[v]]) =
-        use Fixpoint.Ram.BoolExp.Eq;
-        use Fixpoint.Ram.RamTerm.{RowLoad, Lit};
+        use Fixpoint2.Ram.Ast.BoolExp.{Eq};
+        use Fixpoint2.Ram.Ast.RamTerm.{RowLoad, Lit};
         // Sort equalities of the form `var[i] = rhs` ascending on `i`.
         Vector.sortWith(x -> y -> match (x, y) {
             case (Eq(RowLoad(_, index1), _), Eq(RowLoad(_, index2), _)) => Comparison.fromInt32(index1 - index2)

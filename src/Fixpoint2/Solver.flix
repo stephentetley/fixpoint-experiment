@@ -49,7 +49,7 @@ mod Fixpoint2.Solver {
             Fixpoint2.Compiler.compile(cs, stf) |>
             Fixpoint2.Simplifier.simplifyStmt |>
             Fixpoint2.IndexSelection.queryStmt |>
-            lowerStmt;
+            Fixpoint2.VarsToIndices.lowerStmt;
         let model = match d {
             case Datalog(_) => region rc {
                 compiler(d) |> Fixpoint2.Interpreter.interpret(rc) |> toModel
@@ -116,8 +116,8 @@ mod Fixpoint2.Solver {
     ///
     @Internal
     pub def rename(preds: List[PredSym], d: Datalog[v]): Datalog[v] with Order[v] = {
-        use Fixpoint.PredSymsOf.predSymsOf;
-        use Fixpoint.SubstitutePredSym.substitute;
+        use Fixpoint2.PredSymsOf.predSymsOf;
+        use Fixpoint2.SubstitutePredSym.substitute;
 
         // Import a function that can create new ids.
         import static dev.flix.runtime.Global.newId(): Int64 \ IO;
@@ -717,7 +717,7 @@ mod Fixpoint2.Solver {
             pFacts |> MutList.toVector
         }
         case Model(db) => region rc {
-            use Fixpoint.Ram.toDenotation;
+            use Fixpoint2.Ram.Ast.toDenotation;
             let pFacts = MutList.new(rc);
             let query = ramSym -> match ramSym {
                 case RamSym.Full(predSym, _, _) => match predSym <=> p {

@@ -17,6 +17,8 @@
 mod Fixpoint2.Ram.Ast {
 
     use Fixpoint2.Shared.{Denotation, PredSym}
+    use Fixpoint2.PredSymsOf
+    use Fixpoint2.SubstitutePredSym
 
     pub enum RamStmt[v] {
         case Insert(RelOp[v])
@@ -71,6 +73,41 @@ mod Fixpoint2.Ram.Ast {
     pub enum RowVar with Eq {
         case Named(String)
         case Index(Int32)
+    }
+
+    instance Eq[RamSym[v]] {
+        pub def eq(a: RamSym[v], b: RamSym[v]): Bool = match (a, b) {
+            case (RamSym.Full(s1, _, _),  RamSym.Full(s2, _, _))  => s1 == s2
+            case (RamSym.Delta(s1, _, _), RamSym.Delta(s2, _, _)) => s1 == s2
+            case (RamSym.New(s1, _, _),   RamSym.New(s2, _, _))   => s1 == s2
+            case _                                  => false
+        }
+    }
+
+    instance Order[RamSym[v]] {
+        pub def compare(a: RamSym[v], b: RamSym[v]): Comparison = match a {
+            case RamSym.Full(s1, _, _) => match b {
+                case RamSym.Full(s2, _, _) => s1 <=> s2
+                case _ => Comparison.GreaterThan
+            }
+            case RamSym.Delta(s1, _, _) => match b {
+                case RamSym.Delta(s2, _, _) => s1 <=> s2
+                case RamSym.New(_) => Comparison.GreaterThan
+                case RamSym.Full(_) => Comparison.LessThan
+            }
+            case RamSym.New(s1, _, _) => match b {
+                case RamSym.New(s2, _, _) => s1 <=> s2
+                case _ => Comparison.LessThan
+            }
+        }
+    }
+
+    instance Order[RowVar] {
+        pub def compare(a: RowVar, b: RowVar): Comparison = match (a, b) {
+            case (RowVar.Named(s1), RowVar.Named(s2)) => s1 <=> s2
+            case (RowVar.Index(i1), RowVar.Index(i2)) => i1 <=> i2
+            case _ => ?bug
+        }
     }
 
     instance ToString[RamStmt[v]] {
@@ -162,4 +199,31 @@ mod Fixpoint2.Ram.Ast {
         case RamSym.New(_, _, den) => den
     }
     
+
+
+    instance PredSymsOf[RamSym[v]] {
+        pub def predSymsOf(x: RamSym[v]): Set[PredSym] = match x {
+            case RamSym.Full(predSym, _, _)    => Set.singleton(predSym)
+            case RamSym.Delta(predSym, _, _)   => Set.singleton(predSym)
+            case RamSym.New(predSym, _, _)     => Set.singleton(predSym)
+        }
+    }
+
+    instance SubstitutePredSym[RamSym[v]] {
+        pub def substitute(x: RamSym[v], s: Map[PredSym, PredSym]): RamSym[v] = match x {
+            case RamSym.Full(predSym, arity, den)  =>
+                let newSym = Map.getWithDefault(predSym, predSym, s);
+                RamSym.Full(newSym, arity, den)
+
+            case RamSym.Delta(predSym, arity, den) =>
+                let newSym = Map.getWithDefault(predSym, predSym, s);
+                RamSym.Delta(newSym, arity, den)
+
+            case RamSym.New(predSym, arity, den)   =>
+                let newSym = Map.getWithDefault(predSym, predSym, s);
+                RamSym.New(newSym, arity, den)
+        }
+    }
+
+
 }
