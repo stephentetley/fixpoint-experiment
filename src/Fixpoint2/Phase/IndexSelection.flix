@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-mod Fixpoint2.IndexSelection {
+mod Fixpoint2.Phase.IndexSelection {
 
     use Fixpoint2.Ast.Ram.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
 

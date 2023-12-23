@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-mod Fixpoint2.Stratifier {
+mod Fixpoint2.Phase.Stratifier {
 
-    use Fixpoint2.Ast.Datalog.{Datalog, Constraint, HeadPredicate, BodyPredicate, Polarity, Fixity, PrecedenceGraph}
+    use Fixpoint2.Ast.Datalog.{Datalog, Constraint, HeadPredicate, BodyPredicate, Polarity, Fixity}
     use Fixpoint2.Ast.Datalog.Datalog.{Datalog, Model, Join}
-    use Fixpoint2.Ast.Datalog.PrecedenceGraph.{PrecedenceGraph}
-    use Fixpoint2.Ast.Datalog.PrecedenceEdge.{WeakEdge, StrongEdge}
+    use Fixpoint2.Ast.PrecedenceGraph.PrecedenceGraph
+    use Fixpoint2.Ast.PrecedenceGraph.PrecedenceGraph.{PrecedenceGraph}
+    use Fixpoint2.Ast.PrecedenceGraph.PrecedenceEdge.{WeakEdge, StrongEdge}
     use Fixpoint2.Ast.Datalog.Constraint.{Constraint}
     use Fixpoint2.Ast.Datalog.HeadPredicate.{HeadAtom}
     use Fixpoint2.Ast.Datalog.BodyPredicate.{BodyAtom}

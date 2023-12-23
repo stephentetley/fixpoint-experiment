@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-mod Fixpoint2.Simplifier {
+mod Fixpoint2.Phase.Simplifier {
 
     use Fixpoint2.Ast.Ram.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
     use Fixpoint2.Ast.Ram.RamTerm.{RowLoad, LoadLatVar, Lit, Meet}

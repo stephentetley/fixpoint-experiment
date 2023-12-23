@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-mod Fixpoint2.Compiler {
+mod Fixpoint2.Phase.Compiler {
 
     use Fixpoint2.Ast.Datalog.{Datalog, Constraint, BodyPredicate, BodyTerm, HeadTerm, Polarity, VarSym}
     use Fixpoint2.Ast.Datalog.Datalog.{Datalog}

@@ -17,7 +17,7 @@
 /// The purpose of this phase is to lower row variables in searches and queries to array indices.
 /// This implies substituting named references to row variables with indices
 /// in where clauses, range queries and project operations.
-mod Fixpoint2.VarsToIndices {
+mod Fixpoint2.Phase.VarsToIndices {
 
     use Fixpoint2.Ast.Ram.{RamStmt, RelOp, RamSym, RamTerm, BoolExp, RowVar}
 

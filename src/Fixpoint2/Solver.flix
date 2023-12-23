@@ -35,7 +35,7 @@ mod Fixpoint2.Solver {
     ///
     @Internal
     pub def solve(d: Datalog[v]): Datalog[v] with Order[v] =
-        Fixpoint2.Stratifier.stratify(d) |> solveWithStratification(d)
+        Fixpoint2.Phase.Stratifier.stratify(d) |> solveWithStratification(d)
 
     ///
     /// Returns the minimal model of the given Datalog program `d`.
@@ -46,10 +46,10 @@ mod Fixpoint2.Solver {
     def solveWithStratification(d: Datalog[v], stf: Map[PredSym, Int32]): Datalog[v] with Order[v] = {
         masked_cast(Fixpoint2.Debugging.notifyPreSolve(d, stf));
         let compiler = cs ->
-            Fixpoint2.Compiler.compile(cs, stf) |>
-            Fixpoint2.Simplifier.simplifyStmt |>
-            Fixpoint2.IndexSelection.queryStmt |>
-            Fixpoint2.VarsToIndices.lowerStmt;
+            Fixpoint2.Phase.Compiler.compile(cs, stf) |>
+            Fixpoint2.Phase.Simplifier.simplifyStmt |>
+            Fixpoint2.Phase.IndexSelection.queryStmt |>
+            Fixpoint2.Phase.VarsToIndices.lowerStmt;
         let model = match d {
             case Datalog(_) => region rc {
                 compiler(d) |> Fixpoint2.Interpreter.interpret(rc) |> toModel

@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 mod Fixpoint2.Ast.Shared {
+    
+    use Text.Pretty
+    use Text.PrettyPrint.{Doc}
+    use Text.PrettyPrint.{text}
 
     @Internal
     pub enum PredSym with Eq, Order {
@@ -23,6 +27,12 @@ mod Fixpoint2.Ast.Shared {
     instance ToString[PredSym] {
         pub def toString(predSym: PredSym): String = match predSym {
             case PredSym.PredSym(name, id) => if (id == 0i64) name else "${name}%${id}"
+        }
+    }
+
+    instance Pretty[PredSym] {
+        pub override def pPrint(x: PredSym): Doc = match x {
+            case PredSym.PredSym(name, id) => if (id == 0i64) text(name) else text("${name}%${id}")
         }
     }
 

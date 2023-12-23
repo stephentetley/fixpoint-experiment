@@ -29,26 +29,7 @@ mod Fixpoint2.Ast.Datalog {
     use Fixpoint2.Ast.Datalog.VarSym.{VarSym}
     use Fixpoint2.Ast.Datalog.Fixity.{Loose, Fixed}
 
-    @Internal
-    pub enum PrecedenceGraph(Set[PrecedenceEdge])
 
-
-    instance Monoid[PrecedenceGraph] {
-        pub def empty(): PrecedenceGraph = PrecedenceGraph.PrecedenceGraph(Set.empty())
-    }
-
-    instance SemiGroup[PrecedenceGraph] {
-        pub def combine(x: PrecedenceGraph, y: PrecedenceGraph): PrecedenceGraph = match (x, y) {
-            case (PrecedenceGraph.PrecedenceGraph(xs), PrecedenceGraph.PrecedenceGraph(ys)) => PrecedenceGraph.PrecedenceGraph(Set.union(xs, ys))
-        }
-    }
-
-
-    @Internal
-    pub enum PrecedenceEdge with Eq, Order {
-        case StrongEdge(PredSym, PredSym)
-        case WeakEdge(PredSym, PredSym)
-    }
 
     pub enum Datalog[v] {
         case Datalog(Vector[Constraint[v]], Vector[Constraint[v]])
