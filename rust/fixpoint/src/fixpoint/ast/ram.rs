@@ -223,7 +223,7 @@ pub fn into_denotation<V>(ram_sym: RamSym<V>) -> Denotation<V> {
     }
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum RowVar {
     Named(String),
     Index(i32),

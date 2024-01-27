@@ -30,47 +30,54 @@ pub fn lower_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
     }
 }
 
-fn _lower_term<V>(_row_vars: HashMap<RowVar, RowVar>, term: RamTerm<V>) -> RamTerm<V> {
+fn lower_term<V>(row_vars: &HashMap<RowVar, RowVar>, term: RamTerm<V>) -> RamTerm<V> {
     match term {
         RamTerm::Lit(_) => term,
-        RamTerm::RowLoad(_row_var, _index) => todo!(), 
-            // match row_vars.get(&row_var) {
-            //     Some(&row_var1) => RamTerm::RowLoad(row_var1, index),
-            //     None => RamTerm::RowLoad(row_var, index), 
-            // },
-        RamTerm::LoadLatVar(_row_var) => todo!(),
-    //      RamTerm.LoadLatVar(Map.getWithDefault(rowVar, rowVar, rowVars))
-        RamTerm::Meet(_f, _v1, _v2) => todo!(), // {
-        //     let t1 = lower_term(row_vars, *v1);
-        //     let t2 = lower_term(row_vars, *v2);
-        //     RamTerm::Meet(f, Box::new(t1), Box::new(t2))
-        // },
+        RamTerm::RowLoad(row_var, index) => 
+            match row_vars.get(&row_var) {
+                Some(row_var1) => RamTerm::RowLoad(row_var1.clone(), index),
+                None => RamTerm::RowLoad(row_var, index), 
+            },
+        RamTerm::LoadLatVar(row_var) => 
+            match row_vars.get(&row_var) {
+                Some(row_var1) => RamTerm::LoadLatVar(row_var1.clone()),
+                None => RamTerm::LoadLatVar(row_var), 
+            },
+        RamTerm::Meet(f, v1, v2) => {
+            let t1 = lower_term(row_vars, *v1);
+            let t2 = lower_term(row_vars, *v2);
+            RamTerm::Meet(f, Box::new(t1), Box::new(t2))
+        },
         RamTerm::App0(_) => term,
-        _ => todo!(),
-        // RamTerm::App1(f, v) => todo!(),
-    //     let t = lowerTerm(rowVars, v);
-    //     RamTerm.App1(f, t)
-        // RamTerm::App2(f, v1, v2) => todo!(),
-    //     let t1 = lowerTerm(rowVars, v1);
-    //     let t2 = lowerTerm(rowVars, v2);
-    //     RamTerm.App2(f, t1, t2)
-        // RamTerm::App3(f, v1, v2, v3) => todo!(),
-    //     let t1 = lowerTerm(rowVars, v1);
-    //     let t2 = lowerTerm(rowVars, v2);
-    //     let t3 = lowerTerm(rowVars, v3);
-    //     RamTerm.App3(f, t1, t2, t3)
-        // RamTerm::App4(f, v1, v2, v3, v4) => todo!(),
-    //     let t1 = lowerTerm(rowVars, v1);
-    //     let t2 = lowerTerm(rowVars, v2);
-    //     let t3 = lowerTerm(rowVars, v3);
-    //     let t4 = lowerTerm(rowVars, v4);
-    //     RamTerm.App4(f, t1, t2, t3, t4)
-        // RamTerm::App5(f, v1, v2, v3, v4, v5) => todo!(),
-    //     let t1 = lowerTerm(rowVars, v1);
-    //     let t2 = lowerTerm(rowVars, v2);
-    //     let t3 = lowerTerm(rowVars, v3);
-    //     let t4 = lowerTerm(rowVars, v4);
-    //     let t5 = lowerTerm(rowVars, v5);
-    //     RamTerm.App5(f, t1, t2, t3, t4, t5)
+        RamTerm::App1(f, v) => {
+            let t = lower_term(row_vars, *v);
+            RamTerm::App1(f, Box::new(t))
+        },
+        RamTerm::App2(f, v1, v2) => {
+            let t1 = lower_term(row_vars, *v1);
+            let t2 = lower_term(row_vars, *v2);
+            RamTerm::App2(f, Box::new(t1), Box::new(t2))
+        },
+        RamTerm::App3(f, v1, v2, v3) => {
+            let t1 = lower_term(row_vars, *v1);
+            let t2 = lower_term(row_vars, *v2);
+            let t3 = lower_term(row_vars, *v3);
+            RamTerm::App3(f, Box::new(t1), Box::new(t2), Box::new(t3))
+        },
+        RamTerm::App4(f, v1, v2, v3, v4) => {
+            let t1 = lower_term(row_vars, *v1);
+            let t2 = lower_term(row_vars, *v2);
+            let t3 = lower_term(row_vars, *v3);
+            let t4 = lower_term(row_vars, *v4);
+            RamTerm::App4(f, Box::new(t1), Box::new(t2), Box::new(t3), Box::new(t4))
+        },
+        RamTerm::App5(f, v1, v2, v3, v4, v5) => {
+            let t1 = lower_term(row_vars, *v1);
+            let t2 = lower_term(row_vars, *v2);
+            let t3 = lower_term(row_vars, *v3);
+            let t4 = lower_term(row_vars, *v4);
+            let t5 = lower_term(row_vars, *v5);
+            RamTerm::App5(f, Box::new(t1), Box::new(t2), Box::new(t3), Box::new(t4), Box::new(t5))
+        },
     }
 }
