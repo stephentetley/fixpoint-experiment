@@ -37,10 +37,22 @@ impl<V: std::fmt::Display> fmt::Display for RamStmt<V> {
             RamStmt::Merge(src, dst) => write!(f, "merge {} into {}", src, dst),
             RamStmt::Assign(lhs, rhs) => write!(f, "{} := ${}", lhs, rhs),
             RamStmt::Purge(ram_sym) => write!(f, "purge {}", ram_sym),
-            RamStmt::Seq(_xs) => todo!(), // Vector.join(";${nl}", xs)
-            RamStmt::Until(_test, _body) => todo!(),
-            //     let tst = test |> Vector.join(" Λ ");
-            //     "until(${tst}) do${nl}${String.indent(4, "${body}")}end"
+            RamStmt::Seq(xs) => {
+                let body = xs
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<String>>()
+                    .join(";\n");
+                write!(f, "{}", body)
+            },
+            RamStmt::Until(test, body) => {
+                let test1 = test
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" Λ ");
+                write!(f, "until({}) do\n{}end", test1, *body)
+            }
             RamStmt::Comment(comment) => write!(f, "// {}", comment),
         }
     }
@@ -56,22 +68,43 @@ pub enum RelOp<V> {
 }
 
 impl<V: std::fmt::Display> fmt::Display for RelOp<V> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RelOp::Search(_var, _ram_sym, _body) => todo!(),
-                // "search ${var} ∈ ${ramSym} do${nl}${String.indent(4, "${body}")}end"
-            RelOp::Query(_var, _ram_sym, _prefix_query, _body) => todo!(),
-                // let query = Vector.joinWith(match (i, term) -> {
-                //     ToString.toString(BoolExp.Eq(RamTerm.RowLoad(var, i), term))
-                // }, " ∧ ", prefixQuery);
-                // "query {${var} ∈ ${ramSym} | ${query}} do${nl}${String.indent(4, "${body}")}end"
-            RelOp::Functional(_row_var, _, _terms, _body) => todo!(),
-                // "loop(${rowVar} <- f(${terms |> Vector.join(", ")})) do${nl}${String.indent(4, "${body}")}end"
-            RelOp::Project(_terms, _ram_sym) => todo!(),
-                // "project (${terms |> Vector.join(", ")}) into ${ramSym}"
-            RelOp::If(_test, _then) => todo!(),
-                // let tst = test |> Vector.join(" ∧ ");
-                // "if(${tst}) then${nl}${String.indent(4, "${then}")}end"
+            RelOp::Search(var, ram_sym, body) => 
+                write!(f, "search {} ∈ {} do\n{}end", var, ram_sym, body),
+            RelOp::Query(_, _, _, _) => todo!(),
+                // RelOp::Query(var, ram_sym, prefix_query, body) => {
+            //     let query = prefix_query
+            //         .into_iter()
+            //         .map(|(i, term)| BoolExp::Eq(RamTerm::RowLoad(*var, *i), *term).to_string())
+            //         .collect::<Vec<String>>()
+            //         .join(" ∧ ");
+            //     write!(f, "query {{{} ∈ {} | {}}} do\n{}end", var, ram_sym, query, body)
+            // },
+            RelOp::Functional(row_var, _, terms, body) => {
+                let terms1 = terms
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "loop({} <- f({})) do\n{}end", row_var, terms1, body)
+            },
+            RelOp::Project(terms, ram_sym) => {
+                let terms1 = terms
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "project ({}) into {}", terms1, ram_sym)
+            },
+            RelOp::If(test, then) => {
+                let test1 = test
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ∧ ");
+                write!(f, "if({}) then\n{}end", test1, then)
+            },
         }
     }
 }
@@ -93,8 +126,15 @@ pub enum BoolExp<V> {
 impl<V: std::fmt::Display> fmt::Display for BoolExp<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            BoolExp::Empty(_ram_sym) => todo!(), // write!(f, "{} == ∅", ram_sym),
-            BoolExp::NotMemberOf(_terms, _ram_sym) => todo!(), // "(${terms |> Vector.join(", ")}) ∉ ${ramSym}",
+            BoolExp::Empty(ram_sym) => write!(f, "{} == ∅", ram_sym),
+            BoolExp::NotMemberOf(terms, ram_sym) => {
+                let terms1 = terms  
+                    .into_iter()
+                    .map(|r| r.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "({}) ∉ {}", terms1, ram_sym)
+            },
             BoolExp::Eq(lhs, rhs) => write!(f, "{} == {}", lhs, rhs),
             BoolExp::Leq(_, lhs, rhs) => write!(f, "{} ≤ {}", lhs, rhs),
             BoolExp::Guard0(_) => write!(f, "<clo>()"),
