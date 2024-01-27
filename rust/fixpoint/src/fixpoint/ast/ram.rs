@@ -30,6 +30,22 @@ pub enum RamStmt<V> {
     Comment(String),
 }
 
+impl<V: std::fmt::Display> fmt::Display for RamStmt<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RamStmt::Insert(op) => write!(f, "{}", op),
+            RamStmt::Merge(src, dst) => write!(f, "merge {} into {}", src, dst),
+            RamStmt::Assign(lhs, rhs) => write!(f, "{} := ${}", lhs, rhs),
+            RamStmt::Purge(ram_sym) => write!(f, "purge {}", ram_sym),
+            RamStmt::Seq(_xs) => todo!(), // Vector.join(";${nl}", xs)
+            RamStmt::Until(_test, _body) => todo!(),
+            //     let tst = test |> Vector.join(" Λ ");
+            //     "until(${tst}) do${nl}${String.indent(4, "${body}")}end"
+            RamStmt::Comment(comment) => write!(f, "// {}", comment),
+        }
+    }
+}
+
 // RelOp
 pub enum RelOp<V> {
     Search(RowVar, RamSym<V>, Box<RelOp<V>>),
@@ -39,6 +55,26 @@ pub enum RelOp<V> {
     If(Vec<BoolExp<V>>, Box<RelOp<V>>),
 }
 
+impl<V: std::fmt::Display> fmt::Display for RelOp<V> {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RelOp::Search(_var, _ram_sym, _body) => todo!(),
+                // "search ${var} ∈ ${ramSym} do${nl}${String.indent(4, "${body}")}end"
+            RelOp::Query(_var, _ram_sym, _prefix_query, _body) => todo!(),
+                // let query = Vector.joinWith(match (i, term) -> {
+                //     ToString.toString(BoolExp.Eq(RamTerm.RowLoad(var, i), term))
+                // }, " ∧ ", prefixQuery);
+                // "query {${var} ∈ ${ramSym} | ${query}} do${nl}${String.indent(4, "${body}")}end"
+            RelOp::Functional(_row_var, _, _terms, _body) => todo!(),
+                // "loop(${rowVar} <- f(${terms |> Vector.join(", ")})) do${nl}${String.indent(4, "${body}")}end"
+            RelOp::Project(_terms, _ram_sym) => todo!(),
+                // "project (${terms |> Vector.join(", ")}) into ${ramSym}"
+            RelOp::If(_test, _then) => todo!(),
+                // let tst = test |> Vector.join(" ∧ ");
+                // "if(${tst}) then${nl}${String.indent(4, "${then}")}end"
+        }
+    }
+}
 
 // BoolExp
 pub enum BoolExp<V> {
@@ -52,6 +88,23 @@ pub enum BoolExp<V> {
     Guard3(fn(V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>),
     Guard4(fn(V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
     Guard5(fn(V, V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
+}
+
+impl<V: std::fmt::Display> fmt::Display for BoolExp<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            BoolExp::Empty(_ram_sym) => todo!(), // write!(f, "{} == ∅", ram_sym),
+            BoolExp::NotMemberOf(_terms, _ram_sym) => todo!(), // "(${terms |> Vector.join(", ")}) ∉ ${ramSym}",
+            BoolExp::Eq(lhs, rhs) => write!(f, "{} == {}", lhs, rhs),
+            BoolExp::Leq(_, lhs, rhs) => write!(f, "{} ≤ {}", lhs, rhs),
+            BoolExp::Guard0(_) => write!(f, "<clo>()"),
+            BoolExp::Guard1(_, v) => write!(f, "<clo>({})", v),
+            BoolExp::Guard2(_, v1, v2) => write!(f, "<clo>({}, {})", v1, v2),
+            BoolExp::Guard3(_, v1, v2, v3) => write!(f, "<clo>({}, {}, {})", v1, v2, v3),
+            BoolExp::Guard4(_, v1, v2, v3, v4) => write!(f, "<clo>({}, {}, {}, {})", v1, v2, v3, v4),
+            BoolExp::Guard5(_, v1, v2, v3, v4, v5) => write!(f, "<clo>({}, {}, {}, {}, {})", v1, v2, v3, v4, v5),
+        }
+    }
 }
 
 // RamTerm
@@ -92,6 +145,17 @@ pub enum RamSym<V> {
     New(PredSym, i32, Denotation<V>),
 }
 
+
+impl<V: std::fmt::Display> fmt::Display for RamSym<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RamSym::Full(sym, _, _)    => write!(f, "{}", sym),
+            RamSym::Delta(sym, _, _)   => write!(f, "Δ{}", sym),
+            RamSym::New(sym, _, _)     => write!(f, "Δ{}'", sym),
+        }
+    }
+}
+
 impl<V> PartialEq for RamSym<V> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -119,7 +183,7 @@ pub fn into_denotation<V>(ram_sym: RamSym<V>) -> Denotation<V> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Hash)]
 pub enum RowVar {
     Named(String),
     Index(i32),
