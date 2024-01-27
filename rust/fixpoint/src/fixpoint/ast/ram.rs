@@ -1,24 +1,60 @@
-/*
- * Copyright 2021 Benjamin Dahse
- * Copyright 2024 Stephen Tetley
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Copyright 2021 Benjamin Dahse
+// Copyright 2024 Stephen Tetley
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 
 use std::fmt;
 use std::cmp::Ordering;
 use crate::fixpoint::ast::shared::{Denotation, PredSym};
 
+// RamStmt
+pub enum RamStmt<V> {
+    Insert(RelOp<V>),
+    Merge(Box<RamSym<V>>, Box<RamSym<V>>),
+    Assign(Box<RamSym<V>>, Box<RamSym<V>>),
+    Purge(Box<RamSym<V>>),
+    Seq(Vec<RamStmt<V>>),
+    Until(Vec<BoolExp<V>>, Box<RamStmt<V>>),
+    Comment(String),
+}
+
+// RelOp
+pub enum RelOp<V> {
+    Search(RowVar, RamSym<V>, Box<RelOp<V>>),
+    Query(RowVar, RamSym<V>, Vec<(i32, RamTerm<V>)>, Box<RelOp<V>>),
+    Functional(RowVar, fn(Vec<V>) -> Vec<Vec<V>>, Vec<RamTerm<V>>, Box<RelOp<V>>),
+    Project(Vec<RamTerm<V>>, RamSym<V>),
+    If(Vec<BoolExp<V>>, Box<RelOp<V>>),
+}
+
+
+// BoolExp
+pub enum BoolExp<V> {
+    Empty(RamSym<V>),
+    NotMemberOf(Vec<RamTerm<V>>, RamSym<V>),
+    Eq(RamTerm<V>, RamTerm<V>),
+    Leq(fn(V, V) -> bool, RamTerm<V>, RamTerm<V>),
+    Guard0(fn() -> bool),
+    Guard1(fn(V) -> bool, RamTerm<V>),
+    Guard2(fn(V, V) -> bool, RamTerm<V>, RamTerm<V>),
+    Guard3(fn(V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>),
+    Guard4(fn(V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
+    Guard5(fn(V, V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
+}
+
+// RamTerm
 pub enum RamTerm<V> {
     Lit(V),
     RowLoad(RowVar, i32),
@@ -49,7 +85,7 @@ impl<V: std::fmt::Display> fmt::Display for RamTerm<V> {
     }
 }
 
-
+// RamSym
 pub enum RamSym<V> {
     Full(PredSym, i32, Denotation<V>),
     Delta(PredSym, i32, Denotation<V>),
