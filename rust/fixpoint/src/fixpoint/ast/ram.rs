@@ -73,10 +73,10 @@ impl<V: std::fmt::Display> fmt::Display for RelOp<V> {
             RelOp::Search(var, ram_sym, body) => 
                 write!(f, "search {} ∈ {} do\n{}end", var, ram_sym, body),
             RelOp::Query(_, _, _, _) => todo!(),
-                // RelOp::Query(var, ram_sym, prefix_query, body) => {
+            // RelOp::Query(var, ram_sym, prefix_query, body) => {
             //     let query = prefix_query
             //         .into_iter()
-            //         .map(|(i, term)| BoolExp::Eq(RamTerm::RowLoad(*var, *i), *term).to_string())
+            //         .map(|&(i, term)| BoolExp::Eq(RamTerm::RowLoad(var, i), term).to_string())
             //         .collect::<Vec<String>>()
             //         .join(" ∧ ");
             //     write!(f, "query {{{} ∈ {} | {}}} do\n{}end", var, ram_sym, query, body)

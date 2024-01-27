@@ -14,4 +14,5 @@
 // limitations under the License.
 
 
+pub mod index_selection;
 pub mod vars_to_indices;
