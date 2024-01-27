@@ -32,19 +32,20 @@ pub enum RamTerm<V> {
     App5(fn(V, V, V, V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>),
 }
 
-impl<V> fmt::Display for RamTerm<V> {
+impl<V: std::fmt::Display> fmt::Display for RamTerm<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            case RamTerm.Lit(v) => "%{v}"
-            case RamTerm.RowLoad(var, index) => "${var}[${index}]"
-            case RamTerm.LoadLatVar(var) => "${var}[-1]"
-            case RamTerm.Meet(_, lhs, rhs) => "(${lhs} ⊓ ${rhs})"
-            case RamTerm.App0(_) => "<clo>()"
-            case RamTerm.App1(_, v) => "<clo>(${v})"
-            case RamTerm.App2(_, v1, v2) => "<clo>(${v1}, ${v2})"
-            case RamTerm.App3(_, v1, v2, v3) => "<clo>(${v1}, ${v2}, ${v3})"
-            case RamTerm.App4(_, v1, v2, v3, v4) => "<clo>(${v1}, ${v2}, ${v3}, ${v4})"
-            case RamTerm.App5(_, v1, v2, v3, v4, v5) => "<clo>(${v1}, ${v2}, ${v3}, ${v4}, ${v5})"
+            RamTerm::Lit(v) => write!(f, "{}", v),
+            RamTerm::RowLoad(var, index) => write!(f, "{}[{}]", var, index),
+            RamTerm::LoadLatVar(var) => write!(f, "{}[-1]", var),
+            RamTerm::Meet(_, lhs, rhs) => write!(f, "({} ⊓ {})", lhs, rhs),
+            RamTerm::App0(_) => write!(f, "<clo>()"),
+            RamTerm::App1(_, v) => write!(f, "<clo>({})", v),
+            RamTerm::App2(_, v1, v2) => write!(f, "<clo>({}, {})", v1, v2),
+            RamTerm::App3(_, v1, v2, v3) => write!(f, "<clo>({}, {}, {})", v1, v2, v3),
+            RamTerm::App4(_, v1, v2, v3, v4) => write!(f, "<clo>({}, {}, {}, {})", v1, v2, v3, v4),
+            RamTerm::App5(_, v1, v2, v3, v4, v5) => write!(f, "<clo>({}, {}, {}, {}, {})", v1, v2, v3, v4, v5),
+        }
     }
 }
 
