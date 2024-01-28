@@ -16,17 +16,130 @@
 
 
 use std::collections::HashMap;
-use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RowVar};
+use crate::fixpoint::ast::ram::{RelOp, BoolExp, RamStmt, RamTerm, RowVar};
 
 pub fn lower_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
     match stmt {
-        RamStmt::Insert(_op) => todo!(), // RamStmt.Insert(lowerOp(op, Map#{}, 0))
+        RamStmt::Insert(op) => {
+            let op1 = lower_op(&HashMap::new(), 0, op);
+            RamStmt::Insert(op1)
+        },
         RamStmt::Merge(_, _) => stmt,
         RamStmt::Assign(_, _) => stmt,
         RamStmt::Purge(_) => stmt,
-        RamStmt::Seq(_xs) => todo!(), // RamStmt::Seq(xs.iter().map(|x| lower_stmt(*x)).collect::<Vec<RamStmt<V>>>()),
-        RamStmt::Until(test, body) => RamStmt::Until(test, Box::new(lower_stmt(*body))),
+        RamStmt::Seq(xs) => {
+            let xs1 = xs
+                .into_iter()
+                .map(lower_stmt)
+                .collect::<Vec<RamStmt<V>>>();
+            RamStmt::Seq(xs1)
+        },
+        RamStmt::Until(test, body) => {
+            let body1 = lower_stmt(*body);
+            RamStmt::Until(test, Box::new(body1))
+        },
         RamStmt::Comment(_) => stmt,
+    }
+}
+
+// TODO / WARNING this looks like it needs a persistent Map rather than HashMap...
+fn lower_op<V>(row_vars: &HashMap<RowVar, RowVar>, depth: i32, op: RelOp<V>) -> RelOp<V> {
+    match op {
+        RelOp::Search(_var, ram_sym, body) => {
+            let new_var = RowVar::Index(depth);
+            let new_vars = row_vars; // Map.insert(var, new_var, row_vars);
+            let op1 = lower_op(new_vars, depth + 1, *body);
+            RelOp::Search(new_var, ram_sym, Box::new(op1))
+        },
+        RelOp::Query(_var, ram_sym, prefix_query, body) => {
+            let new_var = RowVar::Index(depth);
+            let new_vars = row_vars; // Map.insert(var, new_var, row_vars);
+            let new_query = prefix_query
+                .into_iter()
+                .map(|(j, t)| (j, lower_term(row_vars, t)))
+                .collect::<Vec<(i32, RamTerm<V>)>>();
+            let body1 = lower_op(new_vars, depth + 1, *body);
+            RelOp::Query(new_var, ram_sym, new_query, Box::new(body1))
+        },
+        RelOp::Functional(_row_var, f, terms, body) => {
+            let new_var = RowVar::Index(depth);
+            let new_vars = row_vars; // Map.insert(rowVar, newVar, row_vars);
+            let new_terms = terms
+                .into_iter()
+                .map(|t| lower_term(row_vars, t))
+                .collect::<Vec<RamTerm<V>>>();
+            let new_body = lower_op(new_vars, depth + 1, *body);
+            RelOp::Functional(new_var, f, new_terms, Box::new(new_body))
+        },
+        RelOp::Project(terms, ram_sym) => {
+            let terms1 = terms
+                .into_iter()
+                .map(|t| lower_term(row_vars, t))
+                .collect::<Vec<RamTerm<V>>>();
+            RelOp::Project(terms1, ram_sym)
+        },
+        RelOp::If(test, then) => {
+            let test1 = test
+                .into_iter()
+                .map(|e| lower_exp(row_vars, e))
+                .collect::<Vec<BoolExp<V>>>();
+            let then1 = lower_op(row_vars, depth, *then);
+            RelOp::If(test1, Box::new(then1))
+        },
+    }
+}
+
+fn lower_exp<V>(row_vars: &HashMap<RowVar, RowVar>, exp: BoolExp<V>) -> BoolExp<V> {
+    match exp {
+        BoolExp::Empty(_) => exp,
+        BoolExp::NotMemberOf(terms, ram_sym) => {
+            let terms1 = terms
+                .into_iter()
+                .map(|t| lower_term(row_vars, t))
+                .collect::<Vec<RamTerm<V>>>();
+            BoolExp::NotMemberOf(terms1, ram_sym)
+        },
+        BoolExp::Eq(lhs, rhs) => {
+            let lhs1 = lower_term(row_vars, lhs);
+            let rhs1 = lower_term(row_vars, rhs);
+            BoolExp::Eq(lhs1, rhs1)
+        },
+        BoolExp::Leq(f, lhs, rhs) => {
+            let lhs1 = lower_term(row_vars, lhs);
+            let rhs1 = lower_term(row_vars, rhs);
+            BoolExp::Leq(f, lhs1, rhs1)
+        },
+        BoolExp::Guard0(_) => exp,
+        BoolExp::Guard1(f, v) => {
+            let t = lower_term(row_vars, v);
+            BoolExp::Guard1(f, t)
+        },
+        BoolExp::Guard2(f, v1, v2) => {
+            let t1 = lower_term(row_vars, v1);
+            let t2 = lower_term(row_vars, v2);
+            BoolExp::Guard2(f, t1, t2)
+        },
+        BoolExp::Guard3(f, v1, v2, v3) => {
+            let t1 = lower_term(row_vars, v1);
+            let t2 = lower_term(row_vars, v2);
+            let t3 = lower_term(row_vars, v3);
+            BoolExp::Guard3(f, t1, t2, t3)
+        },
+        BoolExp::Guard4(f, v1, v2, v3, v4) => {
+            let t1 = lower_term(row_vars, v1);
+            let t2 = lower_term(row_vars, v2);
+            let t3 = lower_term(row_vars, v3);
+            let t4 = lower_term(row_vars, v4);
+            BoolExp::Guard4(f, t1, t2, t3, t4)
+        },
+        BoolExp::Guard5(f, v1, v2, v3, v4, v5) => {
+            let t1 = lower_term(row_vars, v1);
+            let t2 = lower_term(row_vars, v2);
+            let t3 = lower_term(row_vars, v3);
+            let t4 = lower_term(row_vars, v4);
+            let t5 = lower_term(row_vars, v5);
+            BoolExp::Guard5(f, t1, t2, t3, t4, t5)
+        },
     }
 }
 
