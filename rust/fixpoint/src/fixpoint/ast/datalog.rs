@@ -1,4 +1,6 @@
 //
+// Copyright 2021 Benjamin Dahse
+// Copyright 2022 Jonathan Lindegaard Starup
 // Copyright 2024 Stephen Tetley
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod datalog;
-pub mod precedence_graph;
-pub mod ram;
-pub mod shared;
+
+pub enum Fixity {
+    Loose,
+    Fixed,
+}
+
+pub enum Polarity {
+    Positive,
+    Negative,
+}

@@ -17,11 +17,103 @@
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use rpds::List;
-use crate::fixpoint::ast::ram::{RamTerm, BoolExp, RamSym, RowVar};
+use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RamSym, RowVar};
 
 pub type Database<V> = HashMap<RamSym<V>, HashMap<Vec<V>, V>>;
 
 pub type SearchEnv<V> = (Vec<Vec<V>>, Vec<V>);
+
+
+pub fn interpret<V>(stmt: RamStmt<V>) -> Database<V> {
+    let db = HashMap::new();
+    interpret_with_database(&db, stmt);
+    db
+}
+
+pub fn interpret_with_database<V>(db: &Database<V>, stmt: RamStmt<V>) -> &Database<V> {
+    eval_stmt(db, stmt);
+    db
+}
+
+fn eval_stmt<V>(db: &Database<V>, stmt: RamStmt<V>) -> () {
+    match stmt {
+        // RamStmt::Insert(relOp) => eval_op(rc, db, allocEnv(rc, 0, relOp), relOp)
+        // RamStmt::Merge(srcSym, dstSym) =>
+        //     let dst = MutMap.getOrElsePut!(dstSym, MutMap.new(rc), db);
+        //     match toDenotation(srcSym) {
+        //         case Denotation.Relational =>
+        //             MutMap.merge!(MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
+        //         case Denotation.Latticenal(_, _, lub, _) =>
+        //             MutMap.mergeWith!(lub, MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
+        //     }
+        // RamStmt::Assign(lhs, rhs) =>
+        //     MutMap.put!(lhs, MutMap.getWithDefault(rhs, MutMap.new(rc), db), db)
+        // RamStmt::Purge(ramSym) => MutMap.remove!(ramSym, db)
+        // RamStmt::Seq(stmts) => Vector.forEach(evalStmt(rc, db), stmts)
+        // RamStmt::Until(test, body) =>
+        //     if (evalBoolExp(rc, db, (Array#{} @ rc, Array#{} @ rc), test)) {
+        //         ()
+        //     } else {
+        //         evalStmt(rc, db, body);
+        //         evalStmt(rc, db, stmt)
+        //     }
+        RamStmt::Comment(_) => (),
+        _ => todo!(),
+    }
+}
+
+fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env: &SearchEnv<V>, op: RelOp<V>) -> () {
+    match op {
+        // RelOp::Search(RowVar.Index(i), ramSym, body) =>
+        //     let (tupleEnv, latEnv) = env;
+        //     MutMap.forEach(t -> l -> {
+        //         Array.put(t, i, tupleEnv);
+        //         Array.put(l, i, latEnv);
+        //         eval_op(rc1, db, env, body)
+        //     }, MutMap.getWithDefault(ramSym, MutMap.new(rc1), db))
+        // RelOp::Query(RowVar.Index(i), ramSym, query, body) =>
+        //     let (tupleEnv, latEnv) = env;
+        //     MutMap.queryWith(evalQuery(env, Vector.toList(query)), t -> l -> {
+        //         Array.put(t, i, tupleEnv);
+        //         Array.put(l, i, latEnv);
+        //         eval_op(rc1, db, env, body)
+        //     }, MutMap.getWithDefault(ramSym, MutMap.new(rc1), db))
+        // RelOp::Functional(RowVar.Index(i), f, terms, body) =>
+        //     let args = terms |> Vector.map(evalTerm(env));
+        //     let result = f(args): Vector[Vector[v]];
+
+        //     let (tupleEnv, _latEnv) = env; // TODO: Do we ever need to use latEnv?
+        //     foreach (t <- result) {
+        //         Array.put(t, i, tupleEnv);
+        //         eval_op(rc1, db, env, body)
+        //     }
+        // RelOp::Project(terms, ramSym) =>
+        //     let rel = MutMap.getOrElsePut!(ramSym, MutMap.new(rc1), db);
+        //     match toDenotation(ramSym) {
+        //         case Denotation.Relational =>
+        //             let tuple = Vector.map(evalTerm(env), terms);
+        //             MutMap.put!(tuple, Reflect.default(), rel)
+        //         case Denotation.Latticenal(bot, leq, lub, _) =>
+        //             // assume that length(terms) > 0
+        //             let len = Vector.length(terms);
+        //             let keyList = terms |> Vector.map(evalTerm(env));
+        //             let (key, latValList) = Vector.splitAt(len - 1, keyList);
+        //             let latVal = match Vector.head(latValList) {
+        //                 case None => bug!("Found predicate without terms")
+        //                 case Some(k) => k
+        //             };
+        //             if (latVal `leq` bot) ()
+        //             else MutMap.putWith!(lub, key, latVal, rel)
+        //     }
+        RelOp::If(test, then) =>
+            if eval_bool_exp(db, env, &test) {
+                eval_op(db, env, *then)
+            } else {
+                ()
+            },
+        _ => (),
+    }
+}
 
 fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
     match query.first() {
