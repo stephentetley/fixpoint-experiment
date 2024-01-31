@@ -1,4 +1,5 @@
 //
+// Copyright 2022 Magnus Madsen
 // Copyright 2024 Stephen Tetley
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+use crate::fixpoint::ast::shared::PredSym;
 
-pub mod ast;
-pub mod phase;
-pub mod interpreter;
-pub mod pred_syms_of;
-pub mod substitute_pred_sym;
+// A trait for types with predicate symbols that can be substituted.
+pub trait SubstitutePredSym {
+    fn substitute_pred_sym(&self, s: HashMap<PredSym, PredSym>) -> &Self;
+}

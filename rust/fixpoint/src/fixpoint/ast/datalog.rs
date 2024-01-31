@@ -18,8 +18,9 @@
 use std::fmt;
 use std::collections::{HashMap, HashSet};
 use crate::fixpoint::ast::shared::{Denotation, PredSym};
-use crate::fixpoint::ast::ram::{RamSym};
-use crate::fixpoint::pred_syms_of::{PredSymsOf};
+use crate::fixpoint::ast::ram::RamSym;
+use crate::fixpoint::pred_syms_of::PredSymsOf;
+use crate::fixpoint::substitute_pred_sym::SubstitutePredSym;
 
 // Datalog
 pub enum Datalog<V> {
@@ -60,6 +61,21 @@ impl<V> PredSymsOf for BodyPredicate<V> {
                 syms
             }
             _ => HashSet::new(),
+        }
+    }
+}
+
+impl<V> SubstitutePredSym for BodyPredicate<V> {
+    fn substitute_pred_sym(&self, s: HashMap<PredSym, PredSym>) -> &Self {
+        match self {
+            // BodyPredicate::BodyAtom(pred_sym, den, polarity, fixity, terms) => {
+            //     let new_sym = match s.get(&pred_sym) {
+            //         Some(sym1) => sym1.clone(),
+            //         None => pred_sym.clone(), 
+            //     };
+            //     &BodyPredicate::BodyAtom(new_sym, den, polarity.clone(), fixity.clone(), terms)
+            // },
+            _ => self.clone(),
         }
     }
 }
@@ -124,11 +140,14 @@ impl fmt::Display for VarSym {
 }
 
 // Fixity
+#[derive(PartialEq, PartialOrd, Eq, Hash, Clone, Debug)]
 pub enum Fixity {
     Loose,
     Fixed,
 }
 
+// Polarity
+#[derive(PartialEq, PartialOrd, Eq, Hash, Clone, Debug)]
 pub enum Polarity {
     Positive,
     Negative,
