@@ -16,9 +16,10 @@
 // limitations under the License.
 
 use std::fmt;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::fixpoint::ast::shared::{Denotation, PredSym};
 use crate::fixpoint::ast::ram::{RamSym};
+use crate::fixpoint::pred_syms_of::{PredSymsOf};
 
 // Datalog
 pub enum Datalog<V> {
@@ -49,6 +50,19 @@ pub enum BodyPredicate<V> {
     Guard5(fn(V, V, V, V, V) -> bool, VarSym, VarSym, VarSym, VarSym, VarSym),
 }
 
+impl<V> PredSymsOf for BodyPredicate<V> {
+    fn pred_syms_of(&self) -> HashSet<PredSym> {
+        match self {
+            BodyPredicate::BodyAtom(pred_sym, _, _, _, _) => { 
+                let mut syms = HashSet::<PredSym>::new();
+                let sym1 = pred_sym.clone();
+                syms.insert(sym1);
+                syms
+            }
+            _ => HashSet::new(),
+        }
+    }
+}
 
 // HeadTerm
 pub enum HeadTerm<V> {

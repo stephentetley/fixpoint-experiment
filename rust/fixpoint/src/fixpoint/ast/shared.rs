@@ -30,7 +30,7 @@ pub fn is_relational<V>(den: Denotation<V>) -> bool {
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Hash, Clone)]
 pub struct PredSym {
     pub name : String,
     pub id: i64,
