@@ -18,7 +18,14 @@
 use crate::fixpoint::ast::shared::PredSym;
 use std::collections::HashSet;
 
-pub struct PrecedenceGraph(HashSet<PrecedenceEdge>);
+pub struct PrecedenceGraph(pub HashSet<PrecedenceEdge>);
+
+impl PrecedenceGraph {
+    pub fn new() -> Self {
+        PrecedenceGraph(HashSet::new())
+    }
+}
+
 
 #[derive(PartialEq, PartialOrd, Eq, Hash)]
 pub enum PrecedenceEdge {
@@ -26,9 +33,7 @@ pub enum PrecedenceEdge {
     WeakEdge(PredSym, PredSym),
 }
 
-pub fn new() -> PrecedenceGraph {
-    PrecedenceGraph(HashSet::new())
-}
+
 
 // pub fn combine(x: mut PrecedenceGraph, y: PrecedenceGraph) -> PrecedenceGraph {
 //     let hs1 = x.0;

@@ -80,6 +80,45 @@ impl<V> SubstitutePredSym for BodyPredicate<V> {
     }
 }
 
+fn polarity_prefix(pl: Polarity, f: &mut fmt::Formatter) -> fmt::Result {
+    match pl {
+        Polarity::Negative => write!(f, "not "),
+        Polarity::Positive => write!(f, ""),
+    }
+}
+
+fn fixity_prefix(fx: Fixity, f: &mut fmt::Formatter) -> fmt::Result {
+    match fx {
+        Fixity::Fixed => write!(f, "fix "),
+        Fixity::Loose => write!(f, ""),
+    }
+}
+
+impl<V: std::fmt::Display> fmt::Display for BodyPredicate<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            // BodyPredicate::BodyAtom(predSym, Denotation.Relational, p, f, terms) =>
+            //     "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${terms |> Vector.join(", ")})"
+            // BodyPredicate::BodyAtom(predSym, Denotation.Latticenal(_), p, f, terms) =>
+            //     let n = Vector.length(terms)-1;
+            //     let (keyTerms, latticeTerms) = (Vector.take(n, terms), Vector.drop(n, terms));
+            //     match Vector.head(latticeTerms) {
+            //         case None    => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}()"
+            //         case Some(l) => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${keyTerms |> Vector.join(", ")}; ${l})"
+            //     }
+            // BodyPredicate::Functional(bound_vars, _, free_vars) => write!(f, "<loop>({}, {})", bound_vars, free_vars),
+            BodyPredicate::Guard0(_) => write!(f, "<clo>()"),
+            BodyPredicate::Guard1(_, v) => write!(f, "<clo>({})", v),
+            BodyPredicate::Guard2(_, v1, v2) => write!(f, "<clo>({}, {})", v1, v2),
+            BodyPredicate::Guard3(_, v1, v2, v3) => write!(f, "<clo>({}, {}, {})", v1, v2, v3),
+            BodyPredicate::Guard4(_, v1, v2, v3, v4) => write!(f, "<clo>({}, {}, {}, {})", v1, v2, v3, v4),
+            BodyPredicate::Guard5(_, v1, v2, v3, v4, v5) => write!(f, "<clo>({}, {}, {}, {}, {})", v1, v2, v3, v4, v5), 
+            _ => todo!(),
+        }
+    }
+}
+
+
 // HeadTerm
 pub enum HeadTerm<V> {
     Var(VarSym),

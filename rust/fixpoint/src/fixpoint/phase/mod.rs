@@ -16,4 +16,5 @@
 
 pub mod index_selection;
 pub mod simplifier;
+pub mod stratifier;
 pub mod vars_to_indices;
