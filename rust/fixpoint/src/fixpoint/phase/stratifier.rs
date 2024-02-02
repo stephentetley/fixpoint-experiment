@@ -16,8 +16,8 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
-use crate::fixpoint::ast::datalog::{Datalog, HeadPredicate, BodyPredicate};
-use crate::fixpoint::ast::precedence_graph::PrecedenceGraph;
+use crate::fixpoint::ast::datalog::{Datalog, Constraint, HeadPredicate, BodyPredicate, Fixity, Polarity};
+use crate::fixpoint::ast::precedence_graph::{PrecedenceGraph, PrecedenceEdge};
 use crate::fixpoint::ast::shared::PredSym;
 
 //
@@ -37,6 +37,19 @@ pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
     }
 }
 
+fn precedence_helper<V>(cnst: Constraint<V>) -> PrecedenceGraph {
+    match cnst {
+        Constraint::Constraint(head, body) => {
+            let mut pg = PrecedenceGraph::new();
+            // body
+            //     .iter()
+            //     .for_each(|bodyp| { let hs = pg.union(&mk_dep_edge(head, bodyp)).collect::<HashSet<PrecedenceEdge>>(); pg = PrecedenceGraph(hs); ()});
+            pg
+        }
+    }
+}
+
+
 //
 // Creates a singleton set with a strong or weak edge. Negatively bound atoms and
 // fixed atoms create strong edges because the body predicate has to be in a strictly
@@ -45,10 +58,17 @@ pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
 //
 fn mk_dep_edge<V>(dst: HeadPredicate<V>, src: BodyPredicate<V>) -> PrecedenceGraph {
     match (dst, src) {
-        // (HeadAtom(headSym, _, _), BodyAtom(bodySym, _, Polarity.Positive, Fixity.Loose, _)) =>
+        (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, Polarity::Positive, Fixity::Loose, _)) => {
+            let mut pg = PrecedenceGraph::new();
+            pg.insert(PrecedenceEdge::WeakEdge(body_sym, head_sym));
+            pg
+        },
         //    PrecedenceGraph(Set#{WeakEdge(bodySym, headSym)})
-        // (HeadAtom(headSym, _, _), BodyAtom(bodySym, _, _, _, _)) =>
-        //     PrecedenceGraph(Set#{StrongEdge(bodySym, headSym)})
+        (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, _, _, _)) => {
+            let mut pg = PrecedenceGraph::new();
+            pg.insert(PrecedenceEdge::StrongEdge(body_sym, head_sym));
+            pg
+        },
         _ => PrecedenceGraph::new(),
     }
 }

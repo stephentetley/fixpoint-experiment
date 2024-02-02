@@ -17,13 +17,26 @@
 
 use crate::fixpoint::ast::shared::PredSym;
 use std::collections::HashSet;
+use std::collections::hash_set::Union;
+use std::collections::hash_map::RandomState;
 
 pub struct PrecedenceGraph(pub HashSet<PrecedenceEdge>);
+
+// pub type PrecedenceGraphUnion<'a> = Union<'a, &PrecedenceEdge, RandomState>
 
 impl PrecedenceGraph {
     pub fn new() -> Self {
         PrecedenceGraph(HashSet::new())
     }
+
+    pub fn insert(&mut self, value: PrecedenceEdge) -> bool {
+        self.0.insert(value)
+    }
+
+    pub fn union<'a>(&'a self, other: &'a PrecedenceGraph) -> Union<'a, PrecedenceEdge, RandomState> {
+        self.0.union(&other.0)
+    }
+
 }
 
 
