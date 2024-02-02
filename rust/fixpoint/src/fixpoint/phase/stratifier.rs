@@ -15,7 +15,6 @@
 // limitations under the License.
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 use crate::fixpoint::ast::datalog::{Datalog, Constraint, HeadPredicate, BodyPredicate, Fixity, Polarity};
 use crate::fixpoint::ast::precedence_graph::{PrecedenceGraph, PrecedenceEdge};
 use crate::fixpoint::ast::shared::PredSym;
@@ -31,8 +30,17 @@ pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
         // Datalog::Datalog(_, rules) =>
         //     Vector.foldRight(match Constraint(HeadAtom(p, _, _), _) -> Map.insert(p, 0), Map#{}, rules) |>
         //     stratifyHelper(mkDepGraph(d))
-        Datalog::Model(_) => HashMap::new(), // Models contain only facts.
-        // Datalog::Join(d1, d2) => Map.unionWith(Int32.max, stratify(d1), stratify(d2))
+        Datalog::Model(_) => HashMap::new(), // Models contain only facts. 
+        Datalog::Join(d1, d2) => { // Map.unionWith(Int32.max, ...) 
+            let mut m1 = stratify(*d1);
+            let m2 = stratify(*d2);
+            m2.iter()
+                .for_each(|(k, &v)| match m1.get(&k) {
+                    Some(&v1) => { m1.insert(k.clone(), std::cmp::max(v, v1)); () }
+                    None => { m1.insert(k.clone(), v); () }
+                });
+            m1
+        },
         _ => todo!(),
     }
 }
