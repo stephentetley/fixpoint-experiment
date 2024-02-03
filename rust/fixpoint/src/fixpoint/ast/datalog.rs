@@ -147,6 +147,7 @@ impl<V: std::fmt::Display> fmt::Display for HeadTerm<V> {
 }
 
 // BodyTerm
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum BodyTerm<V> {
     Wild,
     Var(VarSym),

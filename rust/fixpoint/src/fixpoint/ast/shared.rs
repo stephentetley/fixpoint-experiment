@@ -18,6 +18,7 @@
 
 use std::fmt;
 
+
 pub enum Denotation<V> {
     Relational,
     Latticenal(V, fn(V, V) -> bool, fn(V, V) -> V, fn(V, V) -> V),
