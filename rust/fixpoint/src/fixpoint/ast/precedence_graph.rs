@@ -39,7 +39,7 @@ impl<'a> PrecedenceGraph<'a> {
 }
 
 
-#[derive(PartialEq, PartialOrd, Eq, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Clone, Hash)]
 pub enum PrecedenceEdge {
     StrongEdge(PredSym, PredSym),
     WeakEdge(PredSym, PredSym),

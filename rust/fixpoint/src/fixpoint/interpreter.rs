@@ -117,15 +117,15 @@ fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env
 
 fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
     match query.first() {
-        Option::None => Ordering::Equal,
-        Option::Some(x1) => {
+        None => Ordering::Equal,
+        Some(x1) => {
             let (j, t) = x1;
             let vv = tuple[*j as usize].clone();
             let v1 = eval_term(env, t);
             match vv.cmp(&v1) {
                 Ordering::Equal => match query.drop_first() {
-                    Option::None => eval_query(env, List::new(), tuple),
-                    Option::Some(rs) => eval_query(env, rs, tuple),
+                    None => eval_query(env, List::new(), tuple),
+                    Some(rs) => eval_query(env, rs, tuple),
                 },
                 cmp => cmp
             }

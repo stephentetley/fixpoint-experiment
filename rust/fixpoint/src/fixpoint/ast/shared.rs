@@ -37,10 +37,8 @@ pub struct PredSym {
     pub id: i64,
 }
 
-// Implement `Display` for `PredSym`.
 impl fmt::Display for PredSym {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Use `self.number` to refer to each positional data point.
         write!(f, "({}%{})", self.name, self.id)
     }
 }

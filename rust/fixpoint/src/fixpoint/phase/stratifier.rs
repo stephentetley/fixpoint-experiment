@@ -25,6 +25,7 @@ use crate::fixpoint::ast::shared::PredSym;
 // Initially, all IDB predicates are assigned to stratum 0.
 // I.e. facts are ignored in the stratification.
 //
+// TODO pass the HashMap around as a mutable rather than union (extend) it.
 pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
     match d {
         // Datalog::Datalog(_, rules) =>
@@ -44,6 +45,54 @@ pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
         _ => todo!(),
     }
 }
+
+fn stratify_helper(g: &PrecedenceGraph, stf: &mut HashMap<PredSym, i32>) {
+    let PrecedenceGraph(xs) = g;
+    // The number of strata is bounded by the number of predicates
+    // which is bounded by the number of edges in the precedence graph.
+    let max_stratum = xs.len() as i32;
+    // Visit every edge and ensure the following:
+    // 1. If (body, head) is a weak edge, then body belongs to a lower stratum
+    // or the same stratum as head.
+    // 2. If (body, head) is a strong edge, then body belongs to a strictly lower stratum
+    // than head.
+    let changed = xs.iter().fold(false, |acc, edge| match edge {
+        PrecedenceEdge::WeakEdge(body_sym, head_sym) => {
+            let body_stratum = stf.get(body_sym).unwrap_or(&0);
+            let head_stratum = stf.get(head_sym).unwrap_or(&0);
+            if body_stratum > head_stratum {
+                stf.insert(head_sym.clone(), *body_stratum);
+                true
+            } else {
+                acc
+            }
+        },
+        PrecedenceEdge::StrongEdge(body_sym, head_sym) => {
+            let body_stratum = stf.get(body_sym).unwrap_or(&0);
+            let head_stratum = stf.get(head_sym).unwrap_or(&0);
+            if body_stratum > head_stratum {
+                let new_head_stratum = body_stratum + 1;
+                // If there are more strata than edges,
+                // the precedence graph must contain a strong cycle!
+                if new_head_stratum > max_stratum {
+                    panic!("Stratification error (strong cycle)")
+                } else {
+                   stf.insert(head_sym.clone(), new_head_stratum);
+                    true
+                }
+            } else {
+                acc
+            }
+        },
+    });
+    // Check if property 1 and 2 now holds for all edges.
+    if changed {
+        stratify_helper(g, stf)
+    } else {
+        ()
+    }
+}
+
 
 fn precedence_helper<'a, V>(cnst: Constraint<V>) -> PrecedenceGraph<'a> {
     match cnst {
