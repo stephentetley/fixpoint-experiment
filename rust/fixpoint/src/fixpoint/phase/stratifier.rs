@@ -25,16 +25,21 @@ use crate::fixpoint::ast::shared::PredSym;
 // Initially, all IDB predicates are assigned to stratum 0.
 // I.e. facts are ignored in the stratification.
 //
-// TODO pass the HashMap around as a mutable rather than union (extend) it.
-pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
+pub fn stratify<V>(d: &Datalog<V>) -> HashMap<PredSym, i32> {
     match d {
-        // Datalog::Datalog(_, rules) =>
-        //     Vector.foldRight(match Constraint(HeadAtom(p, _, _), _) -> Map.insert(p, 0), Map#{}, rules) |>
-        //     stratifyHelper(mkDepGraph(d))
+        Datalog::Datalog(_, rules) => {
+            let mut m1 = HashMap::new();
+            rules.iter()
+                .rev()
+                .for_each(|Constraint::Constraint(HeadPredicate::HeadAtom(p, _, _), _)| { m1.insert(p.clone(), 0); ()});
+            let pg = mk_dep_graph(d);
+            stratify_helper(&pg, &mut m1);
+            m1
+        },
         Datalog::Model(_) => HashMap::new(), // Models contain only facts. 
-        Datalog::Join(d1, d2) => { // Map.unionWith(Int32.max, ...) 
-            let mut m1 = stratify(*d1);
-            let m2 = stratify(*d2);
+        Datalog::Join(d1, d2) => { 
+            let mut m1 = stratify(&d1);
+            let mut m2 = stratify(&d2);
             m2.iter()
                 .for_each(|(k, &v)| match m1.get(&k) {
                     Some(&v1) => { m1.insert(k.clone(), std::cmp::max(v, v1)); () }
@@ -42,9 +47,9 @@ pub fn stratify<V>(d: Datalog<V>) -> HashMap<PredSym, i32> {
                 });
             m1
         },
-        _ => todo!(),
     }
 }
+
 
 fn stratify_helper(g: &PrecedenceGraph, stf: &mut HashMap<PredSym, i32>) {
     let PrecedenceGraph(xs) = g;
@@ -93,11 +98,24 @@ fn stratify_helper(g: &PrecedenceGraph, stf: &mut HashMap<PredSym, i32>) {
     }
 }
 
+fn mk_dep_graph<V>(d: &Datalog<V>) -> PrecedenceGraph {
+    match d {
+        Datalog::Datalog(_, rules) => todo!(), // Vector.fold(Vector.map(precedenceHelper, rules))
+        Datalog::Model(_) => PrecedenceGraph::new(),
+        Datalog::Join(d1, d2) => {
+            let mut pg1 = mk_dep_graph(d1);
+            let pg2 = mk_dep_graph(d2);
+            pg1.extend(pg2);
+            pg1
+        },
+    }
+}
 
-fn precedence_helper<'a, V>(cnst: Constraint<V>) -> PrecedenceGraph<'a> {
+
+fn precedence_helper<V>(cnst: Constraint<V>) -> PrecedenceGraph {
     match cnst {
         Constraint::Constraint(head, body) => {
-            let mut pg = PrecedenceGraph::new();
+            let pg = PrecedenceGraph::new();
             // body
             //     .iter()
             //     .for_each(|bodyp| {pg.extend(&mk_dep_edge(&head, bodyp)); ()});
@@ -113,7 +131,7 @@ fn precedence_helper<'a, V>(cnst: Constraint<V>) -> PrecedenceGraph<'a> {
 // lower strata than the head. Positive, loose atoms create weak edges where the body
 // has to be in the same strata as the head or lower.
 //
-fn mk_dep_edge<'a, V>(dst: &HeadPredicate<V>, src: &BodyPredicate<V>) -> PrecedenceGraph<'a> {
+fn mk_dep_edge<V>(dst: &HeadPredicate<V>, src: &BodyPredicate<V>) -> PrecedenceGraph {
     match (dst, src) {
         // (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, Polarity::Positive, Fixity::Loose, _)) => {
         //     let mut pg = PrecedenceGraph::new();
