@@ -31,11 +31,18 @@ impl PrecedenceGraph {
     }
 
     pub fn extend(&mut self, other: PrecedenceGraph) {
-        // let it1 = other.0.iter();
-        // self.0.extend(other.0.iter());
-        todo!();
+        self.0.extend(other.0.into_iter());
     }
 
+}
+
+impl IntoIterator for PrecedenceGraph {
+    type Item = PrecedenceEdge;
+    type IntoIter = std::collections::hash_set::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
 }
 
 
