@@ -100,7 +100,14 @@ fn stratify_helper(g: &PrecedenceGraph, stf: &mut HashMap<PredSym, i32>) {
 
 fn mk_dep_graph<V>(d: &Datalog<V>) -> PrecedenceGraph {
     match d {
-        Datalog::Datalog(_, rules) => todo!(), // Vector.fold(Vector.map(precedenceHelper, rules))
+        Datalog::Datalog(_, rules) => { 
+            let mut pg = PrecedenceGraph::new();
+            for rule in rules {
+                let pg1 = precedence_helper(rule);
+                pg.extend(pg1)
+            }
+            pg
+        },
         Datalog::Model(_) => PrecedenceGraph::new(),
         Datalog::Join(d1, d2) => {
             let mut pg1 = mk_dep_graph(d1);
@@ -112,7 +119,7 @@ fn mk_dep_graph<V>(d: &Datalog<V>) -> PrecedenceGraph {
 }
 
 
-fn precedence_helper<V>(cnst: Constraint<V>) -> PrecedenceGraph {
+fn precedence_helper<V>(cnst: &Constraint<V>) -> PrecedenceGraph {
     match cnst {
         Constraint::Constraint(head, body) => {
             let mut pg = PrecedenceGraph::new();
