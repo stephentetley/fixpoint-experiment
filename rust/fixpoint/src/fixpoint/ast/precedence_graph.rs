@@ -46,6 +46,28 @@ impl IntoIterator for PrecedenceGraph {
 }
 
 
+impl<const N: usize> From<[PrecedenceEdge; N]> for PrecedenceGraph {
+    fn from(arr: [PrecedenceEdge; N]) -> Self {
+        let mut c = PrecedenceGraph::new();
+        for i in arr.into_iter() {
+            c.insert(i);
+        }
+        c
+    }
+}
+
+impl From<Vec<PrecedenceEdge>> for PrecedenceGraph {
+    fn from(v: Vec<PrecedenceEdge>) -> Self {
+        let mut c = PrecedenceGraph::new();
+        for i in v.into_iter() {
+            c.insert(i);
+        }
+        c
+    }
+}
+
+
+
 #[derive(PartialEq, PartialOrd, Eq, Clone, Hash)]
 pub enum PrecedenceEdge {
     StrongEdge(PredSym, PredSym),

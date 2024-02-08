@@ -115,10 +115,10 @@ fn mk_dep_graph<V>(d: &Datalog<V>) -> PrecedenceGraph {
 fn precedence_helper<V>(cnst: Constraint<V>) -> PrecedenceGraph {
     match cnst {
         Constraint::Constraint(head, body) => {
-            let pg = PrecedenceGraph::new();
-            // body
-            //     .iter()
-            //     .for_each(|bodyp| {pg.extend(&mk_dep_edge(&head, bodyp)); ()});
+            let mut pg = PrecedenceGraph::new();
+            body
+                .into_iter()
+                .for_each(|bodyp| {pg.extend(mk_dep_edge(&head, &bodyp)); ()});
             pg
         }
     }
@@ -133,17 +133,10 @@ fn precedence_helper<V>(cnst: Constraint<V>) -> PrecedenceGraph {
 //
 fn mk_dep_edge<V>(dst: &HeadPredicate<V>, src: &BodyPredicate<V>) -> PrecedenceGraph {
     match (dst, src) {
-        // (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, Polarity::Positive, Fixity::Loose, _)) => {
-        //     let mut pg = PrecedenceGraph::new();
-        //     pg.insert(PrecedenceEdge::WeakEdge(body_sym, head_sym));
-        //     pg
-        // },
-        // //    PrecedenceGraph(Set#{WeakEdge(bodySym, headSym)})
-        // (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, _, _, _)) => {
-        //     let mut pg = PrecedenceGraph::new();
-        //     pg.insert(PrecedenceEdge::StrongEdge(body_sym, head_sym));
-        //     pg
-        // },
+        (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, Polarity::Positive, Fixity::Loose, _)) => 
+            PrecedenceGraph::from([PrecedenceEdge::WeakEdge(body_sym.clone(), head_sym.clone())]),
+        (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, _, _, _)) => 
+            PrecedenceGraph::from([PrecedenceEdge::StrongEdge(body_sym.clone(), head_sym.clone())]), 
         _ => PrecedenceGraph::new(),
     }
 }
