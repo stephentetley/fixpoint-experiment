@@ -29,7 +29,7 @@ pub enum Datalog<V> {
     Join(Box<Datalog<V>>, Box<Datalog<V>>),
 }
 
-// Constraint
+// Constraint (facts x rules)
 pub enum Constraint<V> {
     Constraint(HeadPredicate<V>, Vec<BodyPredicate<V>>),
 }
@@ -80,33 +80,43 @@ impl<V> SubstitutePredSym for BodyPredicate<V> {
     }
 }
 
-fn polarity_prefix(pl: Polarity, f: &mut fmt::Formatter) -> fmt::Result {
+fn polarity_prefix(pl: &Polarity) -> String {
     match pl {
-        Polarity::Negative => write!(f, "not "),
-        Polarity::Positive => write!(f, ""),
+        Polarity::Negative => "not ".to_string(),
+        Polarity::Positive => "".to_string(),
     }
 }
 
-fn fixity_prefix(fx: Fixity, f: &mut fmt::Formatter) -> fmt::Result {
+fn fixity_prefix(fx: &Fixity) -> String {
     match fx {
-        Fixity::Fixed => write!(f, "fix "),
-        Fixity::Loose => write!(f, ""),
+        Fixity::Fixed => "fix ".to_string(),
+        Fixity::Loose => "".to_string(),
     }
 }
 
-impl<V: std::fmt::Display> fmt::Display for BodyPredicate<V> {
+impl<V: fmt::Display> fmt::Display for BodyPredicate<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            // BodyPredicate::BodyAtom(predSym, Denotation.Relational, p, f, terms) =>
-            //     "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${terms |> Vector.join(", ")})"
-            // BodyPredicate::BodyAtom(predSym, Denotation.Latticenal(_), p, f, terms) =>
-            //     let n = Vector.length(terms)-1;
-            //     let (keyTerms, latticeTerms) = (Vector.take(n, terms), Vector.drop(n, terms));
-            //     match Vector.head(latticeTerms) {
-            //         case None    => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}()"
-            //         case Some(l) => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${keyTerms |> Vector.join(", ")}; ${l})"
-            //     }
-            // BodyPredicate::Functional(bound_vars, _, free_vars) => write!(f, "<loop>({}, {})", bound_vars, free_vars),
+            BodyPredicate::BodyAtom(pred_sym, Denotation::Relational, pty, fty, terms) => {
+                let ts: Vec<_> = terms.iter().map(|v| format!("{v}")).collect();
+                write!(f, "{}{}{}({})", polarity_prefix(pty), fixity_prefix(fty), pred_sym, ts.join(", "))
+            },
+            BodyPredicate::BodyAtom(pred_sym, Denotation::Latticenal(..), pty, fty, terms) => {
+                let n = terms.len() - 1;
+                // let mut key_terms = terms;
+                // let lattice_terms = key_terms.split_off(n);
+                // let (keyTerms, latticeTerms) = (Vector.take(n, terms), Vector.drop(n, terms));
+                // match Vector.head(latticeTerms) {
+                //     case None    => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}()"
+                //     case Some(l) => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${keyTerms |> Vector.join(", ")}; ${l})"
+                // }
+                todo!()
+            },
+            BodyPredicate::Functional(bound_vars, _, free_vars) => { 
+                let bvs: Vec<_> = bound_vars.iter().map(|v| format!("{v}")).collect();
+                let fvs: Vec<_> = free_vars.iter().map(|v| format!("{v}")).collect();
+                write!(f, "<loop>({}, {})", bvs.join(" "), fvs.join(" "))
+            },
             BodyPredicate::Guard0(_) => write!(f, "<clo>()"),
             BodyPredicate::Guard1(_, v) => write!(f, "<clo>({})", v),
             BodyPredicate::Guard2(_, v1, v2) => write!(f, "<clo>({}, {})", v1, v2),
@@ -131,7 +141,7 @@ pub enum HeadTerm<V> {
     App5(fn(V, V, V, V, V) -> V, VarSym, VarSym, VarSym, VarSym, VarSym),
 }
 
-impl<V: std::fmt::Display> fmt::Display for HeadTerm<V> {
+impl<V: fmt::Display> fmt::Display for HeadTerm<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             HeadTerm::Var(var_sym) => write!(f, "${}", var_sym),
@@ -154,7 +164,7 @@ pub enum BodyTerm<V> {
     Lit(V),
 }
 
-impl<V: std::fmt::Display> fmt::Display for BodyTerm<V> {
+impl<V: fmt::Display> fmt::Display for BodyTerm<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BodyTerm::Wild => write!(f, "_"),

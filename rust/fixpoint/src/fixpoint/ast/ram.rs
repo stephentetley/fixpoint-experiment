@@ -30,7 +30,7 @@ pub enum RamStmt<V> {
     Comment(String),
 }
 
-impl<V: std::fmt::Display> fmt::Display for RamStmt<V> {
+impl<V: fmt::Display> fmt::Display for RamStmt<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RamStmt::Insert(op) => write!(f, "{}", op),
@@ -67,7 +67,7 @@ pub enum RelOp<V> {
     If(Vec<BoolExp<V>>, Box<RelOp<V>>),
 }
 
-impl<V: std::fmt::Display> fmt::Display for RelOp<V> {
+impl<V: fmt::Display> fmt::Display for RelOp<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RelOp::Search(var, ram_sym, body) => 
@@ -123,7 +123,7 @@ pub enum BoolExp<V> {
     Guard5(fn(V, V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
 }
 
-impl<V: std::fmt::Display> fmt::Display for BoolExp<V> {
+impl<V: fmt::Display> fmt::Display for BoolExp<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BoolExp::Empty(ram_sym) => write!(f, "{} == ∅", ram_sym),
@@ -161,7 +161,7 @@ pub enum RamTerm<V> {
     App5(fn(V, V, V, V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>),
 }
 
-impl<V: std::fmt::Display> fmt::Display for RamTerm<V> {
+impl<V: fmt::Display> fmt::Display for RamTerm<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RamTerm::Lit(v) => write!(f, "{}", v),
@@ -186,7 +186,7 @@ pub enum RamSym<V> {
 }
 
 
-impl<V: std::fmt::Display> fmt::Display for RamSym<V> {
+impl<V: fmt::Display> fmt::Display for RamSym<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RamSym::Full(sym, _, _)    => write!(f, "{}", sym),
@@ -230,7 +230,6 @@ pub enum RowVar {
     Index(i32),
 }
 
-// Implement `Display` for `RowVar`.
 impl fmt::Display for RowVar {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { 
         match self {
