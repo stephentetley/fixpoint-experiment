@@ -26,20 +26,22 @@ pub type Database<V> = HashMap<RamSym<V>, HashMap<Vec<V>, V>>;
 pub type SearchEnv<V> = (Vec<Vec<V>>, Vec<V>);
 
 
-pub fn interpret<V>(stmt: RamStmt<V>) -> Database<V> {
-    let db = HashMap::new();
-    interpret_with_database(&db, stmt);
+pub fn interpret<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(stmt: RamStmt<V>) -> Database<V> {
+    let mut db = HashMap::new();
+    interpret_with_database(&mut db, stmt);
     db
 }
 
-pub fn interpret_with_database<V>(db: &Database<V>, stmt: RamStmt<V>) -> &Database<V> {
-    eval_stmt(db, stmt);
-    db
+pub fn interpret_with_database<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: RamStmt<V>) {
+    eval_stmt(db, &stmt);
 }
 
-fn eval_stmt<V>(db: &Database<V>, stmt: RamStmt<V>) -> () {
+fn eval_stmt<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: &RamStmt<V>) -> () {
     match stmt {
-        // RamStmt::Insert(relOp) => eval_op(rc, db, allocEnv(rc, 0, relOp), relOp)
+        RamStmt::Insert(rel_op) => { 
+            let search_env = alloc_env(0, rel_op);
+            eval_op(db, &search_env, rel_op)
+        },
         // RamStmt::Merge(srcSym, dstSym) =>
         //     let dst = MutMap.getOrElsePut!(dstSym, MutMap.new(rc), db);
         //     match toDenotation(srcSym) {
@@ -50,8 +52,8 @@ fn eval_stmt<V>(db: &Database<V>, stmt: RamStmt<V>) -> () {
         //     }
         // RamStmt::Assign(lhs, rhs) =>
         //     MutMap.put!(lhs, MutMap.getWithDefault(rhs, MutMap.new(rc), db), db)
-        // RamStmt::Purge(ramSym) => MutMap.remove!(ramSym, db)
-        // RamStmt::Seq(stmts) => Vector.forEach(evalStmt(rc, db), stmts)
+        RamStmt::Purge(ram_sym) => {db.remove(ram_sym);},
+        RamStmt::Seq(stmts) => stmts.iter().for_each(|st| eval_stmt(db, &st)),
         // RamStmt::Until(test, body) =>
         //     if (evalBoolExp(rc, db, (Array#{} @ rc, Array#{} @ rc), test)) {
         //         ()
@@ -64,7 +66,18 @@ fn eval_stmt<V>(db: &Database<V>, stmt: RamStmt<V>) -> () {
     }
 }
 
-fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &Database<V>, env: &SearchEnv<V>, op: RelOp<V>) -> () {
+
+fn alloc_env<V: Clone>(depth: i32, rel_op: &RelOp<V>) -> SearchEnv<V> {
+    match rel_op {
+        RelOp::Search(_, _, body)           => alloc_env(depth + 1, &*body),
+        RelOp::Query(_, _, _, body)         => alloc_env(depth + 1, &*body),
+        RelOp::Functional(_, _, _, body)    => alloc_env(depth + 1, &*body),
+        RelOp::Project(..)                  => (vec![Vec::new(); depth as usize], Vec::with_capacity(depth as usize)),
+        RelOp::If(_, then)                  => alloc_env(depth, &*then),
+    }
+}
+
+fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
     match op {
         // RelOp::Search(RowVar.Index(i), ramSym, body) =>
         //     let (tupleEnv, latEnv) = env;
@@ -109,7 +122,7 @@ fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db:
         //     }
         RelOp::If(test, then) =>
             if eval_bool_exp(db, env, &test) {
-                eval_op(db, env, *then)
+                eval_op(db, env, &*then)
             } else {
                 ()
             },
@@ -162,8 +175,7 @@ fn eval_bool_exp<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::D
                             Some(l) => l,
                         };
                         let rel1 = rel.get(key).unwrap_or(bot);
-                        // !leq(lat_term, rel1)
-                        todo!()
+                        !(leq)(lat_term.clone(), rel1.clone())
                     },
                 }
             },
