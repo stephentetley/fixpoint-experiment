@@ -18,10 +18,11 @@
 
 use std::fmt;
 
-
+// Box functional types?
+#[derive(Eq, PartialEq, Hash, Clone)]
 pub enum Denotation<V> {
     Relational,
-    Latticenal(V, fn(V, V) -> bool, fn(V, V) -> V, fn(V, V) -> V),
+    Latticenal(V, Box<fn(V, V) -> bool>, Box<fn(V, V) -> V>, Box<fn(V, V) -> V>),
 }
 
 pub fn is_relational<V>(den: Denotation<V>) -> bool {

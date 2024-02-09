@@ -179,6 +179,7 @@ impl<V: fmt::Display> fmt::Display for RamTerm<V> {
 }
 
 // RamSym
+#[derive(Eq, Hash, Clone)]
 pub enum RamSym<V> {
     Full(PredSym, i32, Denotation<V>),
     Delta(PredSym, i32, Denotation<V>),

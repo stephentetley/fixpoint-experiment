@@ -17,7 +17,9 @@
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use rpds::List;
+use crate::fixpoint::ast::ram;
 use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RamSym, RowVar};
+use crate::fixpoint::ast::shared::{Denotation};
 
 pub type Database<V> = HashMap<RamSym<V>, HashMap<Vec<V>, V>>;
 
@@ -62,7 +64,7 @@ fn eval_stmt<V>(db: &Database<V>, stmt: RamStmt<V>) -> () {
     }
 }
 
-fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env: &SearchEnv<V>, op: RelOp<V>) -> () {
+fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &Database<V>, env: &SearchEnv<V>, op: RelOp<V>) -> () {
     match op {
         // RelOp::Search(RowVar.Index(i), ramSym, body) =>
         //     let (tupleEnv, latEnv) = env;
@@ -115,7 +117,7 @@ fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env
     }
 }
 
-fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
+fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
     match query.first() {
         None => Ordering::Equal,
         Some(x1) => {
@@ -133,29 +135,38 @@ fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display>(env: &SearchEnv<V>
     }
 }
 
-fn eval_bool_exp<V: Ord + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
+fn eval_bool_exp<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
     exprs
         .into_iter()
         .all(|exp| match exp {
-            // BoolExp::Empty(ramSym) =>
-            //     MutMap.isEmpty(MutMap.getWithDefault(ramSym, MutMap.new(rc1), db))
-            // BoolExp::NotMemberOf(terms, ramSym) =>
-            //     let rel = MutMap.getWithDefault(ramSym, MutMap.new(rc1), db);
-            //     match toDenotation(ramSym) {
-            //         case Denotation.Relational =>
-            //             let tuple = Vector.map(eval_term(env), terms);
-            //             not MutMap.memberOf(tuple, rel)
-            //         case Denotation.Latticenal(bot, leq, _, _) =>
-            //             let len = Vector.length(terms);
-            //             let eval_terms = Vector.map(eval_term(env), terms);
-            //             let key = Vector.take(len - 1, eval_terms);
-            //             let latTerms = Vector.drop(len - 1, eval_terms);
-            //             let latTerm = match Vector.head(latTerms) {
-            //                 case None => bug!("Found predicate without terms")
-            //                 case Some(hd) => hd
-            //             };
-            //             not (latTerm `leq` MutMap.getWithDefault(key, bot, rel))
-            //     }
+            BoolExp::Empty(ram_sym) => {
+                match db.get(ram_sym) {
+                    None => true,
+                    Some(m) => m.is_empty(),
+                }
+            },
+            BoolExp::NotMemberOf(terms, ram_sym) => {
+                let blank_map = HashMap::new();
+                let rel = db.get(ram_sym).unwrap_or(&blank_map);
+                match ram::into_denotation(ram_sym) {
+                    Denotation::Relational => {
+                        let tuple: Vec<_> = terms.iter().map(|t| eval_term(env, t)).collect();
+                        !rel.contains_key(&tuple)
+                    },
+                    Denotation::Latticenal(bot, leq, _, _) => {
+                        let len = terms.len();
+                        let eval_terms: Vec<_> = terms.iter().map(|t| eval_term(env, t)).collect();
+                        let key = &eval_terms[..len - 1];
+                        let lat_term = match eval_terms.get(len) {
+                            None => panic!("Found predicate without terms"),
+                            Some(l) => l,
+                        };
+                        let rel1 = rel.get(key).unwrap_or(bot);
+                        // !leq(lat_term, rel1)
+                        todo!()
+                    },
+                }
+            },
             BoolExp::Eq(lhs, rhs) => {
                 let lhs1 = eval_term(env, lhs);
                 let rhs1 = eval_term(env, rhs);
