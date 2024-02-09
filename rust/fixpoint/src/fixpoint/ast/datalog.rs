@@ -80,20 +80,6 @@ impl<V> SubstitutePredSym for BodyPredicate<V> {
     }
 }
 
-fn polarity_prefix(pl: &Polarity) -> String {
-    match pl {
-        Polarity::Negative => "not ".to_string(),
-        Polarity::Positive => "".to_string(),
-    }
-}
-
-fn fixity_prefix(fx: &Fixity) -> String {
-    match fx {
-        Fixity::Fixed => "fix ".to_string(),
-        Fixity::Loose => "".to_string(),
-    }
-}
-
 impl<V: fmt::Display> fmt::Display for BodyPredicate<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -103,14 +89,14 @@ impl<V: fmt::Display> fmt::Display for BodyPredicate<V> {
             },
             BodyPredicate::BodyAtom(pred_sym, Denotation::Latticenal(..), pty, fty, terms) => {
                 let n = terms.len() - 1;
-                // let mut key_terms = terms;
-                // let lattice_terms = key_terms.split_off(n);
-                // let (keyTerms, latticeTerms) = (Vector.take(n, terms), Vector.drop(n, terms));
-                // match Vector.head(latticeTerms) {
-                //     case None    => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}()"
-                //     case Some(l) => "${polarityPrefix(p)}${fixityPrefix(f)}${predSym}(${keyTerms |> Vector.join(", ")}; ${l})"
-                // }
-                todo!()
+                match terms.get(n) { 
+                    None => write!(f, "{}{}{}()", polarity_prefix(pty), fixity_prefix(fty), pred_sym),
+                    Some(l) => {
+                        let key_terms = &terms[..n];
+                        let kts: Vec<_> = terms.iter().map(|v| format!("{v}")).collect();
+                        write!(f, "{}{}{}({}; {})", polarity_prefix(pty), fixity_prefix(fty), pred_sym, kts.join(", "), l)
+                    },
+                }
             },
             BodyPredicate::Functional(bound_vars, _, free_vars) => { 
                 let bvs: Vec<_> = bound_vars.iter().map(|v| format!("{v}")).collect();
@@ -128,6 +114,19 @@ impl<V: fmt::Display> fmt::Display for BodyPredicate<V> {
     }
 }
 
+fn polarity_prefix(pl: &Polarity) -> String {
+    match pl {
+        Polarity::Negative => "not ".to_string(),
+        Polarity::Positive => "".to_string(),
+    }
+}
+
+fn fixity_prefix(fx: &Fixity) -> String {
+    match fx {
+        Fixity::Fixed => "fix ".to_string(),
+        Fixity::Loose => "".to_string(),
+    }
+}
 
 // HeadTerm
 pub enum HeadTerm<V> {
@@ -144,7 +143,7 @@ pub enum HeadTerm<V> {
 impl<V: fmt::Display> fmt::Display for HeadTerm<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            HeadTerm::Var(var_sym) => write!(f, "${}", var_sym),
+            HeadTerm::Var(var_sym) => write!(f, "{}", var_sym),
             HeadTerm::Lit(v) => write!(f, "%{}", v),
             HeadTerm::App0(_) => write!(f, "<clo>()"),
             HeadTerm::App1(_, v) => write!(f, "<clo>({})", v),
