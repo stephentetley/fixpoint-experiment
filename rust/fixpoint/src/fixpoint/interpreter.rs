@@ -21,9 +21,11 @@ use crate::fixpoint::ast::ram;
 use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RamSym, RowVar};
 use crate::fixpoint::ast::shared::{Denotation};
 
-pub type Database<V> = HashMap<RamSym<V>, HashMap<Vec<V>, V>>;
+pub type Database<V> = HashMap<Box<RamSym<V>>, HashMap<Vec<V>, V>>;
 
 pub type SearchEnv<V> = (Vec<Vec<V>>, Vec<V>);
+
+// TODO eliminate over use of `.clone()`
 
 
 pub fn interpret<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(stmt: RamStmt<V>) -> Database<V> {
@@ -36,31 +38,48 @@ pub fn interpret_with_database<V: Eq + Ord + std::hash::Hash + std::clone::Clone
     eval_stmt(db, &stmt);
 }
 
-fn eval_stmt<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: &RamStmt<V>) -> () {
+fn eval_stmt<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: &RamStmt<V>) {
     match stmt {
         RamStmt::Insert(rel_op) => { 
             let search_env = alloc_env(0, rel_op);
             eval_op(db, &search_env, rel_op)
         },
-        // RamStmt::Merge(srcSym, dstSym) =>
-        //     let dst = MutMap.getOrElsePut!(dstSym, MutMap.new(rc), db);
-        //     match toDenotation(srcSym) {
-        //         case Denotation.Relational =>
-        //             MutMap.merge!(MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
-        //         case Denotation.Latticenal(_, _, lub, _) =>
-        //             MutMap.mergeWith!(lub, MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
-        //     }
-        // RamStmt::Assign(lhs, rhs) =>
-        //     MutMap.put!(lhs, MutMap.getWithDefault(rhs, MutMap.new(rc), db), db)
+        RamStmt::Merge(src_sym, dst_sym) => {
+            let mut m1 = HashMap::new();
+            let mut dst: &mut HashMap<Vec<V>, V> = match db.get(dst_sym) {
+                Some(dst1) => todo!(), // dst1,
+                None => {db.insert(dst_sym.clone(), m1.clone()); &mut m1},
+            };
+            match ram::into_denotation(&src_sym) {
+                Denotation::Relational => {
+                    let mut m2 = HashMap::new();
+                    let src_in_db: HashMap<Vec<V>, V> = db.get(src_sym).unwrap_or(&m2).clone();
+                    dst.extend(src_in_db.into_iter());
+                },
+                Denotation::Latticenal(_, _, lub, _) => {
+                    // MutMap.mergeWith!(lub, MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
+                    todo!()
+                }
+            }
+        },
+        RamStmt::Assign(lhs, rhs) => {
+            let mut m1 = HashMap::new();
+            match db.get(lhs) {
+                None => db.insert(lhs.clone(), m1),
+                Some(m2) => db.insert(lhs.clone(), m2.clone()),
+            };
+        },
         RamStmt::Purge(ram_sym) => {db.remove(ram_sym);},
         RamStmt::Seq(stmts) => stmts.iter().for_each(|st| eval_stmt(db, &st)),
-        // RamStmt::Until(test, body) =>
-        //     if (evalBoolExp(rc, db, (Array#{} @ rc, Array#{} @ rc), test)) {
-        //         ()
-        //     } else {
-        //         evalStmt(rc, db, body);
-        //         evalStmt(rc, db, stmt)
-        //     }
+        RamStmt::Until(test, body) => {
+            let search_env = (Vec::new(), Vec::new());
+            if eval_bool_exp(db, &search_env, test) {
+                ()
+            } else {
+                eval_stmt(db, body);
+                eval_stmt(db, stmt)
+            }
+        },
         RamStmt::Comment(_) => (),
         _ => todo!(),
     }
@@ -79,13 +98,15 @@ fn alloc_env<V: Clone>(depth: i32, rel_op: &RelOp<V>) -> SearchEnv<V> {
 
 fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
     match op {
-        // RelOp::Search(RowVar.Index(i), ramSym, body) =>
-        //     let (tupleEnv, latEnv) = env;
-        //     MutMap.forEach(t -> l -> {
-        //         Array.put(t, i, tupleEnv);
-        //         Array.put(l, i, latEnv);
-        //         eval_op(rc1, db, env, body)
-        //     }, MutMap.getWithDefault(ramSym, MutMap.new(rc1), db))
+        RelOp::Search(RowVar::Index(i), ram_sym, body) => {
+            let (tuple_env, lat_env) = env;
+            // MutMap.forEach(t -> l -> {
+            //     Array.put(t, i, tupleEnv);
+            //     Array.put(l, i, latEnv);
+            //     eval_op(rc1, db, env, body)
+            // }, MutMap.getWithDefault(ramSym, MutMap.new(rc1), db))
+            todo!();
+        },
         // RelOp::Query(RowVar.Index(i), ramSym, query, body) =>
         //     let (tupleEnv, latEnv) = env;
         //     MutMap.queryWith(evalQuery(env, Vector.toList(query)), t -> l -> {
