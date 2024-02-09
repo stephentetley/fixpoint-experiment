@@ -14,6 +14,9 @@
 // limitations under the License.
 
 use fixpoint::fixpoint::ast::shared::*;
+use fixpoint::fixpoint::ast::datalog::*;
+
+
 
 fn main() {
     println!("Running...\n");
@@ -22,4 +25,11 @@ fn main() {
         id: 10001,
     };
     println!("{}", ps1);
+
+    let dlog1: Datalog<i32> = program();
+    println!("{}", dlog1);
+}
+
+fn program<V>() -> Datalog<V> {
+    Datalog::Datalog(vec![], vec![])
 }

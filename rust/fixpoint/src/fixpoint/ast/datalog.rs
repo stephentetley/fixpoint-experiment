@@ -18,6 +18,7 @@
 use std::fmt;
 use std::collections::{HashMap, HashSet};
 use crate::fixpoint::ast::shared::{Denotation, PredSym};
+use crate::fixpoint::ast::ram; 
 use crate::fixpoint::ast::ram::RamSym;
 use crate::fixpoint::pred_syms_of::PredSymsOf;
 use crate::fixpoint::substitute_pred_sym::SubstitutePredSym;
@@ -29,14 +30,91 @@ pub enum Datalog<V> {
     Join(Box<Datalog<V>>, Box<Datalog<V>>),
 }
 
+
+impl<V: fmt::Display> fmt::Display for Datalog<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Datalog::Datalog(facts, rules) => {
+                let fs: Vec<_> = facts.iter().map(|v| format!("{v}")).collect();
+                let rs: Vec<_> = rules.iter().map(|v| format!("{v}")).collect();
+                write!(f, "{}\n{}", fs.join("\n"), rs.join("\n"))
+            },
+            Datalog::Model(db) => {
+                let ss: Vec<String> = db.iter()
+                    .map(|(ram_sym, rel)| match ram::into_denotation(ram_sym) {
+                        Denotation::Relational => {
+                            let ts: Vec<_> = rel.iter().map(|(tuple, _)| {
+                                let tuple_string = tuple.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(", ");
+                                format!("{}({})", ram_sym, tuple_string)
+                                }).collect();
+                            ts.join("\n")
+                        },
+                        Denotation::Latticenal(..) => {
+                            let ts: Vec<_> = rel.iter().map(|(tuple, lat)| {
+                                let tuple_string = tuple.iter().map(|v| format!("{v}")).collect::<Vec<_>>().join(", ");
+                                format!("{}({}; {})", "{ram_sym}", tuple_string, lat)
+                                }).collect();
+                            ts.join("\n")
+                        },
+                    })
+                    .collect();
+                write!(f, "{}", ss.join("\n"))
+            },
+            Datalog::Join(d1, d2) => {
+                let s1 = format!("{d1}");
+                let s2 = format!("{d2}");
+                write!(f, "{}\n{}", s1, s2)
+            },
+        }
+    }
+}
+
 // Constraint (facts x rules)
 pub enum Constraint<V> {
     Constraint(HeadPredicate<V>, Vec<BodyPredicate<V>>),
 }
 
+
+impl<V: fmt::Display> fmt::Display for Constraint<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Constraint::Constraint(head, body) => {
+                if body.len() == 0 {
+                    write!(f, "{}.", head)
+                } else {
+                    let bs: Vec<_> = body.iter().map(|v| format!("{v}")).collect();
+                    write!(f, "{} :- {}.", head, bs.join(", "))
+                }
+            }
+       }
+    }
+}
+
 // HeadPredicate
 pub enum HeadPredicate<V> {
     HeadAtom(PredSym, Denotation<V>, Vec<HeadTerm<V>>),
+}
+
+impl<V: fmt::Display> fmt::Display for HeadPredicate<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            HeadPredicate::HeadAtom(pred_sym, Denotation::Relational, terms) => {
+                let ts: Vec<_> = terms.iter().map(|v| format!("{v}")).collect();
+                write!(f, "{}({})", pred_sym, ts.join(", "))
+            },
+            HeadPredicate::HeadAtom(pred_sym, Denotation::Latticenal(..), terms) => {
+                let n = terms.len() - 1;
+                match terms.get(n) { 
+                    None => write!(f, "{}()", pred_sym),
+                    Some(l) => {
+                        let key_terms = &terms[..n];
+                        let kts: Vec<_> = terms.iter().map(|v| format!("{v}")).collect();
+                        write!(f, "{}({}; {})", pred_sym, kts.join(", "), l)
+                    },
+                }
+            },
+        }
+    }
 }
 
 // BodyPredicate

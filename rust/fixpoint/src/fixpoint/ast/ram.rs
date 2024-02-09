@@ -215,7 +215,7 @@ pub fn arity_of<V>(ram_sym: RamSym<V>) -> i32 {
     }
 }
 
-pub fn into_denotation<V>(ram_sym: RamSym<V>) -> Denotation<V> {
+pub fn into_denotation<V>(ram_sym: &RamSym<V>) -> &Denotation<V> {
     match ram_sym {
         RamSym::Full(_, _, den) => den,
         RamSym::Delta(_, _, den) => den,
