@@ -1,4 +1,5 @@
 //
+// Copyright 2021 Benjamin Dahse
 // Copyright 2024 Stephen Tetley
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +14,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+use crate::fixpoint::ast::ram::{RamSym};
 
-pub mod ast;
-pub mod phase;
-pub mod database;
-pub mod interpreter;
-pub mod pred_syms_of;
-pub mod substitute_pred_sym;
+pub struct Database<V>(pub HashMap<RamSym<V>, HashMap<Vec<V>, V>>);
+
+
+impl<V: Eq + std::hash::Hash> Database<V> {
+    pub fn new() -> Self {
+        Database(HashMap::new())
+    }
+    
+    pub fn insert(&mut self, k: RamSym<V>, v: HashMap<Vec<V>, V>) -> bool {
+        self.0.insert(k, v).is_some()
+    }
+
+    pub fn remove(&mut self, k: &RamSym<V>) -> bool {
+        self.0.remove(k).is_some()
+    }
+}
