@@ -32,4 +32,11 @@ impl<V: Eq + std::hash::Hash> Database<V> {
     pub fn remove(&mut self, k: &RamSym<V>) -> bool {
         self.0.remove(k).is_some()
     }
+
+
+    pub fn eval_inplace_or_insert<A>(&mut self, k: RamSym<V>, f: fn(&mut HashMap<Vec<V>, V>) -> A) -> A {
+        let v = self.0.entry(k).or_insert(HashMap::new());
+        f(v)
+    }
+
 }
