@@ -34,8 +34,12 @@ impl<V: Eq + std::hash::Hash> Database<V> {
         self.0.remove(k).is_some()
     }
 
+    pub fn eval_inplace<A>(&mut self, k: RamSym<V>, f: fn(&HashMap<Vec<V>, V>) -> A) -> A {
+        let v = self.0.entry(k).or_insert(HashMap::new());
+        f(v)
+    }
 
-    pub fn eval_inplace_or_insert<A>(&mut self, k: RamSym<V>, f: fn(&mut HashMap<Vec<V>, V>) -> A) -> A {
+    pub fn eval_inplace_or_insert_mut<A>(&mut self, k: RamSym<V>, f: fn(&mut HashMap<Vec<V>, V>) -> A) -> A {
         let v = self.0.entry(k).or_insert(HashMap::new());
         f(v)
     }

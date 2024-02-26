@@ -18,18 +18,17 @@ use std::collections::HashMap;
 use std::cmp::Ordering;
 use rpds::List;
 use crate::fixpoint::ast::ram;
-use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RamSym, RowVar};
+use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RowVar};
 use crate::fixpoint::ast::shared::{Denotation};
 use crate::fixpoint::search_env::{SearchEnv};
-
-pub type Database<V> = HashMap<Box<RamSym<V>>, HashMap<Vec<V>, V>>;
+use crate::fixpoint::database::{Database};
 
 
 // TODO eliminate over use of `.clone()`
 
 
 pub fn interpret<V: Eq + Ord + std::hash::Hash + Default + std::clone::Clone + std::fmt::Display>(stmt: RamStmt<V>) -> Database<V> {
-    let mut db = HashMap::new();
+    let mut db = Database::new();
     interpret_with_database(&mut db, stmt);
     db
 }
@@ -45,31 +44,33 @@ fn eval_stmt<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::
             eval_op(db, &search_env, rel_op)
         },
         RamStmt::Merge(src_sym, dst_sym) => {
-            let mut m1 = HashMap::new();
-            let mut dst: &mut HashMap<Vec<V>, V> = match db.get(dst_sym) {
-                Some(dst1) => todo!(), // dst1,
-                None => {db.insert(dst_sym.clone(), m1.clone()); &mut m1},
-            };
-            match ram::into_denotation(&src_sym) {
-                Denotation::Relational => {
-                    let mut m2 = HashMap::new();
-                    let src_in_db: HashMap<Vec<V>, V> = db.get(src_sym).unwrap_or(&m2).clone();
-                    dst.extend(src_in_db.into_iter());
-                },
-                Denotation::Latticenal(_, _, lub, _) => {
-                    // MutMap.mergeWith!(lub, MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
-                    todo!()
-                }
-            }
+            todo!()
+            // let mut m1 = HashMap::new();
+            // let mut dst: &mut HashMap<Vec<V>, V> = match db.get(dst_sym) {
+            //     Some(dst1) => todo!(), // dst1,
+            //     None => {db.insert(dst_sym.clone(), m1.clone()); &mut m1},
+            // };
+            // match ram::into_denotation(&src_sym) {
+            //     Denotation::Relational => {
+            //         let mut m2 = HashMap::new();
+            //         let src_in_db: HashMap<Vec<V>, V> = db.get(src_sym).unwrap_or(&m2).clone();
+            //         dst.extend(src_in_db.into_iter());
+            //     },
+            //     Denotation::Latticenal(_, _, lub, _) => {
+            //         // MutMap.mergeWith!(lub, MutMap.getWithDefault(srcSym, MutMap.new(rc), db), dst)
+            //         todo!()
+            //     }
+            // }
         },
         RamStmt::Assign(lhs, rhs) => {
-            let mut m1 = HashMap::new();
-            match db.get(lhs) {
-                None => db.insert(lhs.clone(), m1),
-                Some(m2) => db.insert(lhs.clone(), m2.clone()),
-            };
+            todo!()
+            // let mut m1 = HashMap::new();
+            // match db.get(lhs) {
+            //     None => db.insert(*lhs.clone(), m1),
+            //     Some(m2) => db.insert(*lhs.clone(), m2.clone()),
+            // };
         },
-        RamStmt::Purge(ram_sym) => {db.remove(ram_sym);},
+        RamStmt::Purge(ram_sym) => { db.remove(ram_sym); },
         RamStmt::Seq(stmts) => stmts.iter().for_each(|st| eval_stmt(db, &st)),
         RamStmt::Until(test, body) => {
             let search_env = SearchEnv::new(0);
@@ -96,7 +97,7 @@ fn alloc_env<V: Default + std::clone::Clone>(depth: i32, rel_op: &RelOp<V>) -> S
     }
 }
 
-fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
+fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &mut Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
     match op {
         RelOp::Search(RowVar::Index(i), ram_sym, body) => {
             // let (tuple_env, lat_env) = env;
@@ -169,36 +170,38 @@ fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(
     }
 }
 
-fn eval_bool_exp<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
+fn eval_bool_exp<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
     exprs
         .into_iter()
         .all(|exp| match exp {
             BoolExp::Empty(ram_sym) => {
-                match db.get(ram_sym) {
-                    None => true,
-                    Some(m) => m.is_empty(),
-                }
+                db.eval_inplace(ram_sym.clone(), |hm| hm.is_empty())
+                // match db.get(ram_sym) {
+                //     None => true,
+                //     Some(m) => m.is_empty(),
+                // }
             },
             BoolExp::NotMemberOf(terms, ram_sym) => {
-                let blank_map = HashMap::new();
-                let rel = db.get(ram_sym).unwrap_or(&blank_map);
-                match ram::into_denotation(ram_sym) {
-                    Denotation::Relational => {
-                        let tuple: Vec<_> = terms.iter().map(|t| eval_term(env, t)).collect();
-                        !rel.contains_key(&tuple)
-                    },
-                    Denotation::Latticenal(bot, leq, _, _) => {
-                        let len = terms.len();
-                        let eval_terms: Vec<_> = terms.iter().map(|t| eval_term(env, t)).collect();
-                        let key = &eval_terms[..len - 1];
-                        let lat_term = match eval_terms.get(len) {
-                            None => panic!("Found predicate without terms"),
-                            Some(l) => l,
-                        };
-                        let rel1 = rel.get(key).unwrap_or(bot);
-                        !(leq)(lat_term.clone(), rel1.clone())
-                    },
-                }
+                todo!()
+                // let blank_map = HashMap::new();
+                // let rel = db.get(ram_sym).unwrap_or(&blank_map);
+                // match ram::into_denotation(ram_sym) {
+                //     Denotation::Relational => {
+                //         let tuple: Vec<_> = terms.iter().map(|t| eval_term(env, t)).collect();
+                //         !rel.contains_key(&tuple)
+                //     },
+                //     Denotation::Latticenal(bot, leq, _, _) => {
+                //         let len = terms.len();
+                //         let eval_terms: Vec<_> = terms.iter().map(|t| eval_term(env, t)).collect();
+                //         let key = &eval_terms[..len - 1];
+                //         let lat_term = match eval_terms.get(len) {
+                //             None => panic!("Found predicate without terms"),
+                //             Some(l) => l,
+                //         };
+                //         let rel1 = rel.get(key).unwrap_or(bot);
+                //         !(leq)(lat_term.clone(), rel1.clone())
+                //     },
+                // }
             },
             BoolExp::Eq(lhs, rhs) => {
                 let lhs1 = eval_term(env, lhs);
