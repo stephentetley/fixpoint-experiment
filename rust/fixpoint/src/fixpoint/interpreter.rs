@@ -20,25 +20,25 @@ use rpds::List;
 use crate::fixpoint::ast::ram;
 use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RamSym, RowVar};
 use crate::fixpoint::ast::shared::{Denotation};
+use crate::fixpoint::search_env::{SearchEnv};
 
 pub type Database<V> = HashMap<Box<RamSym<V>>, HashMap<Vec<V>, V>>;
 
-pub type SearchEnv<V> = (Vec<Vec<V>>, Vec<V>);
 
 // TODO eliminate over use of `.clone()`
 
 
-pub fn interpret<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(stmt: RamStmt<V>) -> Database<V> {
+pub fn interpret<V: Eq + Ord + std::hash::Hash + Default + std::clone::Clone + std::fmt::Display>(stmt: RamStmt<V>) -> Database<V> {
     let mut db = HashMap::new();
     interpret_with_database(&mut db, stmt);
     db
 }
 
-pub fn interpret_with_database<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: RamStmt<V>) {
+pub fn interpret_with_database<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: RamStmt<V>) {
     eval_stmt(db, &stmt);
 }
 
-fn eval_stmt<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: &RamStmt<V>) {
+fn eval_stmt<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: &RamStmt<V>) {
     match stmt {
         RamStmt::Insert(rel_op) => { 
             let search_env = alloc_env(0, rel_op);
@@ -72,7 +72,7 @@ fn eval_stmt<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Displ
         RamStmt::Purge(ram_sym) => {db.remove(ram_sym);},
         RamStmt::Seq(stmts) => stmts.iter().for_each(|st| eval_stmt(db, &st)),
         RamStmt::Until(test, body) => {
-            let search_env = (Vec::new(), Vec::new());
+            let search_env = SearchEnv::new(0);
             if eval_bool_exp(db, &search_env, test) {
                 ()
             } else {
@@ -86,12 +86,12 @@ fn eval_stmt<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Displ
 }
 
 
-fn alloc_env<V: Clone>(depth: i32, rel_op: &RelOp<V>) -> SearchEnv<V> {
+fn alloc_env<V: Default + std::clone::Clone>(depth: i32, rel_op: &RelOp<V>) -> SearchEnv<V> {
     match rel_op {
         RelOp::Search(_, _, body)           => alloc_env(depth + 1, &*body),
         RelOp::Query(_, _, _, body)         => alloc_env(depth + 1, &*body),
         RelOp::Functional(_, _, _, body)    => alloc_env(depth + 1, &*body),
-        RelOp::Project(..)                  => (vec![Vec::new(); depth as usize], Vec::with_capacity(depth as usize)),
+        RelOp::Project(..)                  => SearchEnv::new(depth as usize),
         RelOp::If(_, then)                  => alloc_env(depth, &*then),
     }
 }
@@ -99,7 +99,7 @@ fn alloc_env<V: Clone>(depth: i32, rel_op: &RelOp<V>) -> SearchEnv<V> {
 fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
     match op {
         RelOp::Search(RowVar::Index(i), ram_sym, body) => {
-            let (tuple_env, lat_env) = env;
+            // let (tuple_env, lat_env) = env;
             // MutMap.forEach(t -> l -> {
             //     Array.put(t, i, tupleEnv);
             //     Array.put(l, i, latEnv);
@@ -249,13 +249,14 @@ fn eval_term<V: std::fmt::Display + std::clone::Clone>(env: &SearchEnv<V>, term:
     match term {
         RamTerm::Lit(v) => v.clone(),
         RamTerm::RowLoad(RowVar::Index(i), index) => {
-            let (tuple_env, _) = env;
+            // let (tuple_env, _) = env;
             // tuple_env[index as usize][i as usize].clone()
             todo!()
         },
         RamTerm::LoadLatVar(RowVar::Index(i)) => {
-            let (_, lat_env) = env;
-            lat_env[*i as usize].clone()
+            // let (_, lat_env) = env;
+            //lat_env[*i as usize].clone()
+            todo!()
         },
         RamTerm::Meet(cap, lhs, rhs) => {
             let v1 = eval_term(env, lhs);

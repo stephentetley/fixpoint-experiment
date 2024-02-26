@@ -14,30 +14,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
-use crate::fixpoint::ast::ram::{RamSym};
-
 #[derive(Debug)]
-pub struct Database<V>(pub HashMap<RamSym<V>, HashMap<Vec<V>, V>>);
+pub struct SearchEnv<V>(Vec<Vec<V>>, Vec<V>);
 
+// TODO - do we want a mutable env, Flix uses arrays so it suggest we do?
 
-impl<V: Eq + std::hash::Hash> Database<V> {
-    pub fn new() -> Self {
-        Database(HashMap::new())
-    }
-    
-    pub fn insert(&mut self, k: RamSym<V>, v: HashMap<Vec<V>, V>) -> bool {
-        self.0.insert(k, v).is_some()
+impl<V: Default + std::clone::Clone> SearchEnv<V> {
+    pub fn new(level: usize) -> Self {
+        SearchEnv(vec![Vec::new(); level], vec![Default::default(); level])
     }
 
-    pub fn remove(&mut self, k: &RamSym<V>) -> bool {
-        self.0.remove(k).is_some()
+    pub fn update_tuple_env(&mut self, i: usize, vals: Vec<V>) {
+        let SearchEnv(tuple_env, _) = self;
+        tuple_env[i] = vals;
     }
 
-
-    pub fn eval_inplace_or_insert<A>(&mut self, k: RamSym<V>, f: fn(&mut HashMap<Vec<V>, V>) -> A) -> A {
-        let v = self.0.entry(k).or_insert(HashMap::new());
-        f(v)
+    pub fn update_lat_env(&mut self, i: usize, vals: V) {
+        let SearchEnv(_, lat_env) = self;
+        lat_env[i] = vals;
     }
-
 }

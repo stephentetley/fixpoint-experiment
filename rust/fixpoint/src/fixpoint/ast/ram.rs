@@ -179,7 +179,7 @@ impl<V: fmt::Display> fmt::Display for RamTerm<V> {
 }
 
 // RamSym - Denotation embeds functions / function pointers, PredSym is "scalar"
-#[derive(Eq, Hash, Clone)]
+#[derive(Eq, Debug, Hash, Clone)]
 pub enum RamSym<V> {
     Full(PredSym, i32, Denotation<V>),
     Delta(PredSym, i32, Denotation<V>),

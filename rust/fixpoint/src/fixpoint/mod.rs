@@ -17,6 +17,7 @@
 pub mod ast;
 pub mod phase;
 pub mod database;
+pub mod search_env;
 pub mod interpreter;
 pub mod pred_syms_of;
 pub mod substitute_pred_sym;

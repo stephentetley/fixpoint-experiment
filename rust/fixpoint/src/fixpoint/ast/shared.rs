@@ -19,20 +19,23 @@
 use std::fmt;
 
 // Box functional types?
-#[derive(Eq, PartialEq, Hash, Clone)]
+#[derive(Eq, Debug, PartialEq, Hash, Clone)]
 pub enum Denotation<V> {
     Relational,
     Latticenal(V, Box<fn(V, V) -> bool>, Box<fn(V, V) -> V>, Box<fn(V, V) -> V>),
 }
 
-pub fn is_relational<V>(den: Denotation<V>) -> bool {
-    match den {
-        Denotation::Relational => true,
-        _ => false,
+impl<V> Denotation<V> {
+    pub fn is_relational(&self) -> bool {
+        match self {
+            Denotation::Relational => true,
+            _ => false,
+        }
     }
 }
 
-#[derive(PartialEq, PartialOrd, Eq, Hash, Clone)]
+
+#[derive(PartialEq, PartialOrd, Eq, Debug, Hash, Clone)]
 pub struct PredSym {
     pub name : String,
     pub id: i64,
