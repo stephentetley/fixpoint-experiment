@@ -24,6 +24,17 @@ impl<V: Default + std::clone::Clone> SearchEnv<V> {
         SearchEnv(vec![Vec::new(); level], vec![Default::default(); level])
     }
 
+    
+    pub fn get_tuple_var(&self, i: usize, j: usize) -> &V {
+        let SearchEnv(tuple_env, _) = self;
+        &tuple_env[i][j]
+    }
+
+    pub fn get_lat_var(&self, i: usize) -> &V {
+        let SearchEnv(_, lat_env) = self;
+        &lat_env[i]
+    }
+
     pub fn update_tuple_env(&mut self, i: usize, vals: Vec<V>) {
         let SearchEnv(tuple_env, _) = self;
         tuple_env[i] = vals;

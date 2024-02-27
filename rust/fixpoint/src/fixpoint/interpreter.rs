@@ -97,7 +97,7 @@ fn alloc_env<V: Default + std::clone::Clone>(depth: i32, rel_op: &RelOp<V>) -> S
     }
 }
 
-fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &mut Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
+fn eval_op<V: Ord + Default + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &mut Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
     match op {
         RelOp::Search(RowVar::Index(i), ram_sym, body) => {
             // let (tuple_env, lat_env) = env;
@@ -152,7 +152,7 @@ fn eval_op<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db:
     }
 }
 
-fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
+fn eval_query<V: Ord + Default + std::clone::Clone + std::fmt::Display + std::hash::Hash>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
     match query.first() {
         None => Ordering::Equal,
         Some(x1) => {
@@ -170,7 +170,7 @@ fn eval_query<V: Ord + std::clone::Clone + std::fmt::Display + std::hash::Hash>(
     }
 }
 
-fn eval_bool_exp<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
+fn eval_bool_exp<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
     exprs
         .into_iter()
         .all(|exp| match exp {
@@ -248,18 +248,15 @@ fn eval_bool_exp<V: Eq + Ord + std::hash::Hash + std::clone::Clone + std::fmt::D
         })
     }
 
-fn eval_term<V: std::fmt::Display + std::clone::Clone>(env: &SearchEnv<V>, term: &RamTerm<V>) -> V {
+// Should this return &V ?
+fn eval_term<V: std::fmt::Display + Default + std::clone::Clone>(env: &SearchEnv<V>, term: &RamTerm<V>) -> V {
     match term {
         RamTerm::Lit(v) => v.clone(),
         RamTerm::RowLoad(RowVar::Index(i), index) => {
-            // let (tuple_env, _) = env;
-            // tuple_env[index as usize][i as usize].clone()
-            todo!()
+            env.get_tuple_var(*index as usize, *i as usize).clone()
         },
         RamTerm::LoadLatVar(RowVar::Index(i)) => {
-            // let (_, lat_env) = env;
-            //lat_env[*i as usize].clone()
-            todo!()
+            env.get_lat_var(*i as usize).clone()
         },
         RamTerm::Meet(cap, lhs, rhs) => {
             let v1 = eval_term(env, lhs);
