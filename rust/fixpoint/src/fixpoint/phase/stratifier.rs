@@ -25,7 +25,7 @@ use crate::fixpoint::ast::shared::PredSym;
 // Initially, all IDB predicates are assigned to stratum 0.
 // I.e. facts are ignored in the stratification.
 //
-pub fn stratify<V>(d: &Datalog<V>) -> HashMap<PredSym, i32> {
+pub fn stratify(d: &Datalog) -> HashMap<PredSym, i32> {
     match d {
         Datalog::Datalog(_, rules) => {
             let mut m1 = HashMap::new();
@@ -98,7 +98,7 @@ fn stratify_helper(g: &PrecedenceGraph, stf: &mut HashMap<PredSym, i32>) {
     }
 }
 
-fn mk_dep_graph<V>(d: &Datalog<V>) -> PrecedenceGraph {
+fn mk_dep_graph(d: &Datalog) -> PrecedenceGraph {
     match d {
         Datalog::Datalog(_, rules) => { 
             let mut pg = PrecedenceGraph::new();
@@ -119,7 +119,7 @@ fn mk_dep_graph<V>(d: &Datalog<V>) -> PrecedenceGraph {
 }
 
 
-fn precedence_helper<V>(cnst: &Constraint<V>) -> PrecedenceGraph {
+fn precedence_helper(cnst: &Constraint) -> PrecedenceGraph {
     match cnst {
         Constraint::Constraint(head, body) => {
             let mut pg = PrecedenceGraph::new();
@@ -138,7 +138,7 @@ fn precedence_helper<V>(cnst: &Constraint<V>) -> PrecedenceGraph {
 // lower strata than the head. Positive, loose atoms create weak edges where the body
 // has to be in the same strata as the head or lower.
 //
-fn mk_dep_edge<V>(dst: &HeadPredicate<V>, src: &BodyPredicate<V>) -> PrecedenceGraph {
+fn mk_dep_edge(dst: &HeadPredicate, src: &BodyPredicate) -> PrecedenceGraph {
     match (dst, src) {
         (HeadPredicate::HeadAtom(head_sym, _, _), BodyPredicate::BodyAtom(body_sym, _, Polarity::Positive, Fixity::Loose, _)) => 
             PrecedenceGraph::from([PrecedenceEdge::WeakEdge(body_sym.clone(), head_sym.clone())]),

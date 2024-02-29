@@ -17,21 +17,21 @@
 
 use std::fmt;
 use std::collections::{HashMap, HashSet};
-use crate::fixpoint::ast::shared::{Denotation, PredSym};
+use crate::fixpoint::ast::shared::{Value, Denotation, PredSym};
 use crate::fixpoint::ast::ram; 
 use crate::fixpoint::ast::ram::RamSym;
 use crate::fixpoint::pred_syms_of::PredSymsOf;
 use crate::fixpoint::substitute_pred_sym::SubstitutePredSym;
 
 // Datalog
-pub enum Datalog<V> {
-    Datalog(Vec<Constraint<V>>, Vec<Constraint<V>>),
-    Model(HashMap<RamSym<V>, HashMap<Vec<V>, V>>),
-    Join(Box<Datalog<V>>, Box<Datalog<V>>),
+pub enum Datalog {
+    Datalog(Vec<Constraint>, Vec<Constraint>),
+    Model(HashMap<RamSym, HashMap<Vec<Value>, Value>>),
+    Join(Box<Datalog>, Box<Datalog>),
 }
 
 
-impl<V: fmt::Display> fmt::Display for Datalog<V> {
+impl fmt::Display for Datalog {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Datalog::Datalog(facts, rules) => {
@@ -70,12 +70,12 @@ impl<V: fmt::Display> fmt::Display for Datalog<V> {
 }
 
 // Constraint (facts x rules)
-pub enum Constraint<V> {
-    Constraint(HeadPredicate<V>, Vec<BodyPredicate<V>>),
+pub enum Constraint {
+    Constraint(HeadPredicate, Vec<BodyPredicate>),
 }
 
 
-impl<V: fmt::Display> fmt::Display for Constraint<V> {
+impl fmt::Display for Constraint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Constraint::Constraint(head, body) => {
@@ -91,11 +91,11 @@ impl<V: fmt::Display> fmt::Display for Constraint<V> {
 }
 
 // HeadPredicate
-pub enum HeadPredicate<V> {
-    HeadAtom(PredSym, Denotation<V>, Vec<HeadTerm<V>>),
+pub enum HeadPredicate {
+    HeadAtom(PredSym, Denotation, Vec<HeadTerm>),
 }
 
-impl<V: fmt::Display> fmt::Display for HeadPredicate<V> {
+impl fmt::Display for HeadPredicate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             HeadPredicate::HeadAtom(pred_sym, Denotation::Relational, terms) => {
@@ -118,18 +118,18 @@ impl<V: fmt::Display> fmt::Display for HeadPredicate<V> {
 }
 
 // BodyPredicate
-pub enum BodyPredicate<V> {
-    BodyAtom(PredSym, Denotation<V>, Polarity, Fixity, Vec<BodyTerm<V>>),
-    Functional(Vec<VarSym>, fn(Vec<V>) -> Vec<Vec<V>>, Vec<VarSym>),
+pub enum BodyPredicate {
+    BodyAtom(PredSym, Denotation, Polarity, Fixity, Vec<BodyTerm>),
+    Functional(Vec<VarSym>, fn(Vec<Value>) -> Vec<Vec<Value>>, Vec<VarSym>),
     Guard0(fn() -> bool),
-    Guard1(fn(V) -> bool, VarSym),
-    Guard2(fn(V, V) -> bool, VarSym, VarSym),
-    Guard3(fn(V, V, V) -> bool, VarSym, VarSym, VarSym),
-    Guard4(fn(V, V, V, V) -> bool, VarSym, VarSym, VarSym, VarSym),
-    Guard5(fn(V, V, V, V, V) -> bool, VarSym, VarSym, VarSym, VarSym, VarSym),
+    Guard1(fn(Value) -> bool, VarSym),
+    Guard2(fn(Value, Value) -> bool, VarSym, VarSym),
+    Guard3(fn(Value, Value, Value) -> bool, VarSym, VarSym, VarSym),
+    Guard4(fn(Value, Value, Value, Value) -> bool, VarSym, VarSym, VarSym, VarSym),
+    Guard5(fn(Value, Value, Value, Value, Value) -> bool, VarSym, VarSym, VarSym, VarSym, VarSym),
 }
 
-impl<V> PredSymsOf for BodyPredicate<V> {
+impl PredSymsOf for BodyPredicate {
     fn pred_syms_of(&self) -> HashSet<PredSym> {
         match self {
             BodyPredicate::BodyAtom(pred_sym, _, _, _, _) => { 
@@ -143,7 +143,7 @@ impl<V> PredSymsOf for BodyPredicate<V> {
     }
 }
 
-impl<V> SubstitutePredSym for BodyPredicate<V> {
+impl SubstitutePredSym for BodyPredicate {
     fn substitute_pred_sym(&self, s: HashMap<PredSym, PredSym>) -> &Self {
         match self {
             // BodyPredicate::BodyAtom(pred_sym, den, polarity, fixity, terms) => {
@@ -158,7 +158,7 @@ impl<V> SubstitutePredSym for BodyPredicate<V> {
     }
 }
 
-impl<V: fmt::Display> fmt::Display for BodyPredicate<V> {
+impl fmt::Display for BodyPredicate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BodyPredicate::BodyAtom(pred_sym, Denotation::Relational, pty, fty, terms) => {
@@ -207,18 +207,18 @@ fn fixity_prefix(fx: &Fixity) -> String {
 }
 
 // HeadTerm
-pub enum HeadTerm<V> {
+pub enum HeadTerm {
     Var(VarSym),
-    Lit(V),
-    App0(fn() -> V),
-    App1(fn(V) -> V, VarSym),
-    App2(fn(V, V) -> V, VarSym, VarSym),
-    App3(fn(V, V, V) -> V, VarSym, VarSym, VarSym),
-    App4(fn(V, V, V, V) -> V, VarSym, VarSym, VarSym, VarSym),
-    App5(fn(V, V, V, V, V) -> V, VarSym, VarSym, VarSym, VarSym, VarSym),
+    Lit(Value),
+    App0(fn() -> Value),
+    App1(fn(Value) -> Value, VarSym),
+    App2(fn(Value, Value) -> Value, VarSym, VarSym),
+    App3(fn(Value, Value, Value) -> Value, VarSym, VarSym, VarSym),
+    App4(fn(Value, Value, Value, Value) -> Value, VarSym, VarSym, VarSym, VarSym),
+    App5(fn(Value, Value, Value, Value, Value) -> Value, VarSym, VarSym, VarSym, VarSym, VarSym),
 }
 
-impl<V: fmt::Display> fmt::Display for HeadTerm<V> {
+impl fmt::Display for HeadTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             HeadTerm::Var(var_sym) => write!(f, "{}", var_sym),
@@ -235,13 +235,13 @@ impl<V: fmt::Display> fmt::Display for HeadTerm<V> {
 
 // BodyTerm
 #[derive(PartialEq, Eq, Hash, Clone)]
-pub enum BodyTerm<V> {
+pub enum BodyTerm {
     Wild,
     Var(VarSym),
-    Lit(V),
+    Lit(Value),
 }
 
-impl<V: fmt::Display> fmt::Display for BodyTerm<V> {
+impl fmt::Display for BodyTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BodyTerm::Wild => write!(f, "_"),

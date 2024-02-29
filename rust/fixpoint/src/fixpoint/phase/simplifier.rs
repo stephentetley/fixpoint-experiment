@@ -31,11 +31,11 @@ use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RamSym, RowVar};
 ///         end
 ///     end
 ///
-pub fn simplify_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
+pub fn simplify_stmt(stmt: RamStmt) -> RamStmt {
     Option::unwrap_or(simplify_helper(&HashSet::new(), stmt), RamStmt::Seq(Vec::new()))
 }
 
-fn simplify_helper<V>(_stratum: &HashSet<RamSym<V>>, stmt: RamStmt<V>) -> Option<RamStmt<V>> {
+fn simplify_helper(_stratum: &HashSet<RamSym>, stmt: RamStmt) -> Option<RamStmt> {
     match stmt {
         // RamStmt::Insert(op) =>
         //     forM (
@@ -89,7 +89,7 @@ fn simplify_helper<V>(_stratum: &HashSet<RamSym<V>>, stmt: RamStmt<V>) -> Option
 ///
 /// Returns the set of variables that occur in `term`.
 ///
-fn ram_term_vars<V>(term: RamTerm<V>) -> HashSet<RowVar> {
+fn ram_term_vars(term: RamTerm) -> HashSet<RowVar> {
     match term {
         RamTerm::Lit(_) => HashSet::new(),
         RamTerm::RowLoad(var, _) => { 

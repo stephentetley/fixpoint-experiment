@@ -26,10 +26,10 @@ fn main() {
     };
     println!("{}", ps1);
 
-    let dlog1: Datalog<i32> = program();
+    let dlog1: Datalog = program();
     println!("{}", dlog1);
 }
 
-fn program<V>() -> Datalog<V> {
+fn program() -> Datalog {
     Datalog::Datalog(vec![], vec![])
 }

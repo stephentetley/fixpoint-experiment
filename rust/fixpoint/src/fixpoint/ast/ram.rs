@@ -17,20 +17,20 @@
 
 use std::fmt;
 use std::cmp::Ordering;
-use crate::fixpoint::ast::shared::{Denotation, PredSym};
+use crate::fixpoint::ast::shared::{Value, Denotation, PredSym};
 
 // RamStmt
-pub enum RamStmt<V> {
-    Insert(RelOp<V>),
-    Merge(Box<RamSym<V>>, Box<RamSym<V>>),
-    Assign(Box<RamSym<V>>, Box<RamSym<V>>),
-    Purge(Box<RamSym<V>>),
-    Seq(Vec<RamStmt<V>>),
-    Until(Vec<BoolExp<V>>, Box<RamStmt<V>>),
+pub enum RamStmt {
+    Insert(RelOp),
+    Merge(Box<RamSym>, Box<RamSym>),
+    Assign(Box<RamSym>, Box<RamSym>),
+    Purge(Box<RamSym>),
+    Seq(Vec<RamStmt>),
+    Until(Vec<BoolExp>, Box<RamStmt>),
     Comment(String),
 }
 
-impl<V: fmt::Display> fmt::Display for RamStmt<V> {
+impl fmt::Display for RamStmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RamStmt::Insert(op) => write!(f, "{}", op),
@@ -59,15 +59,15 @@ impl<V: fmt::Display> fmt::Display for RamStmt<V> {
 }
 
 // RelOp
-pub enum RelOp<V> {
-    Search(RowVar, RamSym<V>, Box<RelOp<V>>),
-    Query(RowVar, RamSym<V>, Vec<(i32, RamTerm<V>)>, Box<RelOp<V>>),
-    Functional(RowVar, fn(Vec<V>) -> Vec<Vec<V>>, Vec<RamTerm<V>>, Box<RelOp<V>>),
-    Project(Vec<RamTerm<V>>, RamSym<V>),
-    If(Vec<BoolExp<V>>, Box<RelOp<V>>),
+pub enum RelOp {
+    Search(RowVar, RamSym, Box<RelOp>),
+    Query(RowVar, RamSym, Vec<(i32, RamTerm)>, Box<RelOp>),
+    Functional(RowVar, fn(Vec<Value>) -> Vec<Vec<Value>>, Vec<RamTerm>, Box<RelOp>),
+    Project(Vec<RamTerm>, RamSym),
+    If(Vec<BoolExp>, Box<RelOp>),
 }
 
-impl<V: fmt::Display> fmt::Display for RelOp<V> {
+impl fmt::Display for RelOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RelOp::Search(var, ram_sym, body) => 
@@ -110,20 +110,20 @@ impl<V: fmt::Display> fmt::Display for RelOp<V> {
 }
 
 // BoolExp
-pub enum BoolExp<V> {
-    Empty(RamSym<V>),
-    NotMemberOf(Vec<RamTerm<V>>, RamSym<V>),
-    Eq(RamTerm<V>, RamTerm<V>),
-    Leq(fn(V, V) -> bool, RamTerm<V>, RamTerm<V>),
+pub enum BoolExp {
+    Empty(RamSym),
+    NotMemberOf(Vec<RamTerm>, RamSym),
+    Eq(RamTerm, RamTerm),
+    Leq(fn(Value, Value) -> bool, RamTerm, RamTerm),
     Guard0(fn() -> bool),
-    Guard1(fn(V) -> bool, RamTerm<V>),
-    Guard2(fn(V, V) -> bool, RamTerm<V>, RamTerm<V>),
-    Guard3(fn(V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>),
-    Guard4(fn(V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
-    Guard5(fn(V, V, V, V, V) -> bool, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>, RamTerm<V>),
+    Guard1(fn(Value) -> bool, RamTerm),
+    Guard2(fn(Value, Value) -> bool, RamTerm, RamTerm),
+    Guard3(fn(Value, Value, Value) -> bool, RamTerm, RamTerm, RamTerm),
+    Guard4(fn(Value, Value, Value, Value) -> bool, RamTerm, RamTerm, RamTerm, RamTerm),
+    Guard5(fn(Value, Value, Value, Value, Value) -> bool, RamTerm, RamTerm, RamTerm, RamTerm, RamTerm),
 }
 
-impl<V: fmt::Display> fmt::Display for BoolExp<V> {
+impl fmt::Display for BoolExp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             BoolExp::Empty(ram_sym) => write!(f, "{} == ∅", ram_sym),
@@ -148,20 +148,20 @@ impl<V: fmt::Display> fmt::Display for BoolExp<V> {
 }
 
 // RamTerm
-pub enum RamTerm<V> {
-    Lit(V),
+pub enum RamTerm {
+    Lit(Value),
     RowLoad(RowVar, i32),
     LoadLatVar(RowVar),
-    Meet(fn(V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>),
-    App0(fn() -> V),
-    App1(fn(V) -> V, Box<RamTerm<V>>),
-    App2(fn(V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>),
-    App3(fn(V, V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>),
-    App4(fn(V, V, V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>),
-    App5(fn(V, V, V, V, V) -> V, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>, Box<RamTerm<V>>),
+    Meet(fn(Value, Value) -> Value, Box<RamTerm>, Box<RamTerm>),
+    App0(fn() -> Value),
+    App1(fn(Value) -> Value, Box<RamTerm>),
+    App2(fn(Value, Value) -> Value, Box<RamTerm>, Box<RamTerm>),
+    App3(fn(Value, Value, Value) -> Value, Box<RamTerm>, Box<RamTerm>, Box<RamTerm>),
+    App4(fn(Value, Value, Value, Value) -> Value, Box<RamTerm>, Box<RamTerm>, Box<RamTerm>, Box<RamTerm>),
+    App5(fn(Value, Value, Value, Value, Value) -> Value, Box<RamTerm>, Box<RamTerm>, Box<RamTerm>, Box<RamTerm>, Box<RamTerm>),
 }
 
-impl<V: fmt::Display> fmt::Display for RamTerm<V> {
+impl fmt::Display for RamTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RamTerm::Lit(v) => write!(f, "{}", v),
@@ -180,14 +180,14 @@ impl<V: fmt::Display> fmt::Display for RamTerm<V> {
 
 // RamSym - Denotation embeds functions / function pointers, PredSym is "scalar"
 #[derive(Eq, Debug, Hash, Clone)]
-pub enum RamSym<V> {
-    Full(PredSym, i32, Denotation<V>),
-    Delta(PredSym, i32, Denotation<V>),
-    New(PredSym, i32, Denotation<V>),
+pub enum RamSym {
+    Full(PredSym, i32, Denotation),
+    Delta(PredSym, i32, Denotation),
+    New(PredSym, i32, Denotation),
 }
 
 
-impl<V: fmt::Display> fmt::Display for RamSym<V> {
+impl fmt::Display for RamSym {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RamSym::Full(sym, _, _)    => write!(f, "{}", sym),
@@ -197,7 +197,7 @@ impl<V: fmt::Display> fmt::Display for RamSym<V> {
     }
 }
 
-impl<V> PartialEq for RamSym<V> {
+impl PartialEq for RamSym {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (RamSym::Full(s1, _, _),  RamSym::Full(s2, _, _))  => s1 == s2,
@@ -208,7 +208,7 @@ impl<V> PartialEq for RamSym<V> {
     }
 }
 
-pub fn arity_of<V>(ram_sym: RamSym<V>) -> i32 {
+pub fn arity_of(ram_sym: RamSym) -> i32 {
     match ram_sym {
         RamSym::Full(_, arity, _) => arity,
         RamSym::Delta(_, arity, _) => arity,
@@ -216,7 +216,7 @@ pub fn arity_of<V>(ram_sym: RamSym<V>) -> i32 {
     }
 }
 
-pub fn into_denotation<V>(ram_sym: &RamSym<V>) -> &Denotation<V> {
+pub fn into_denotation(ram_sym: &RamSym) -> &Denotation {
     match ram_sym {
         RamSym::Full(_, _, den) => den,
         RamSym::Delta(_, _, den) => den,

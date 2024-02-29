@@ -20,12 +20,12 @@ use std::fmt;
 
 // Box functional types?
 #[derive(Eq, Debug, PartialEq, Hash, Clone)]
-pub enum Denotation<V> {
+pub enum Denotation {
     Relational,
-    Latticenal(V, Box<fn(V, V) -> bool>, Box<fn(V, V) -> V>, Box<fn(V, V) -> V>),
+    Latticenal(Value, Box<fn(Value, Value) -> bool>, Box<fn(Value, Value) -> Value>, Box<fn(Value, Value) -> Value>),
 }
 
-impl<V> Denotation<V> {
+impl Denotation {
     pub fn is_relational(&self) -> bool {
         match self {
             Denotation::Relational => true,
@@ -44,5 +44,29 @@ pub struct PredSym {
 impl fmt::Display for PredSym {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}%{})", self.name, self.id)
+    }
+}
+
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Clone)]
+pub enum Value {
+    Bool(bool),
+    Int32(i32),
+    Str(String),
+}
+
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value::Bool(b) => write!(f, "{}", b),
+            Value::Int32(i) => write!(f, "{}", i),
+            Value::Str(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Value::Bool(false)
     }
 }

@@ -16,30 +16,32 @@
 
 use std::collections::HashMap;
 use crate::fixpoint::ast::ram::{RamSym};
+use crate::fixpoint::ast::shared::{Value};
 
+// RamSym => (Map: values => value)
 #[derive(Debug)]
-pub struct Database<V>(pub HashMap<RamSym<V>, HashMap<Vec<V>, V>>);
+pub struct Database(pub HashMap<RamSym, HashMap<Vec<Value>, Value>>);
 
 
-impl<V: Eq + std::hash::Hash> Database<V> {
+impl Database {
     pub fn new() -> Self {
         Database(HashMap::new())
     }
     
-    pub fn insert(&mut self, k: RamSym<V>, v: HashMap<Vec<V>, V>) -> bool {
+    pub fn insert(&mut self, k: RamSym, v: HashMap<Vec<Value>, Value>) -> bool {
         self.0.insert(k, v).is_some()
     }
 
-    pub fn remove(&mut self, k: &RamSym<V>) -> bool {
+    pub fn remove(&mut self, k: &RamSym) -> bool {
         self.0.remove(k).is_some()
     }
 
-    pub fn eval_inplace<A>(&mut self, k: RamSym<V>, f: fn(&HashMap<Vec<V>, V>) -> A) -> A {
+    pub fn eval_inplace<A>(&mut self, k: RamSym, f: fn(&HashMap<Vec<Value>, Value>) -> A) -> A {
         let v = self.0.entry(k).or_insert(HashMap::new());
         f(v)
     }
 
-    pub fn eval_inplace_or_insert_mut<A>(&mut self, k: RamSym<V>, f: fn(&mut HashMap<Vec<V>, V>) -> A) -> A {
+    pub fn eval_inplace_or_insert_mut<A>(&mut self, k: RamSym, f: fn(&mut HashMap<Vec<Value>, Value>) -> A) -> A {
         let v = self.0.entry(k).or_insert(HashMap::new());
         f(v)
     }

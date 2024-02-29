@@ -58,7 +58,7 @@ use crate::fixpoint::ast::ram::{RamStmt, RelOp, BoolExp, RamTerm, RowVar};
 ///
 /// Step 1 and Step 2 are implemented as one pass.
 ///
-pub fn query_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
+pub fn query_stmt(stmt: RamStmt) -> RamStmt {
     match stmt {
         // RamStmt::Insert(op) => {
         //     let (inner_op, ground) = query_op(&HashSet::new(), op);
@@ -83,7 +83,7 @@ pub fn query_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
 /// `freeVars` is the set of variables bound by an outer loop.
 /// Returns the optimized op and the conditions that occur in `op` that have to be hoisted.
 ///
-fn query_op<V>(op: RelOp<V>, _free_vars: HashSet<RowVar>) -> (RelOp<V>, Vec<BoolExp<V>>) { 
+fn query_op(op: RelOp, _free_vars: HashSet<RowVar>) -> (RelOp, Vec<BoolExp>) { 
     match op {
         // RelOp::Search(var, ramSym, body) =>
         //     use Fixpoint.Ast.Ram.BoolExp.Eq;
@@ -142,7 +142,7 @@ fn query_op<V>(op: RelOp<V>, _free_vars: HashSet<RowVar>) -> (RelOp<V>, Vec<Bool
 ///
 /// An expression is ground if all its terms are ground.
 ///
-fn is_exp_ground<V>(free_vars: &HashSet<RowVar>, exp: &BoolExp<V>) -> bool {
+fn is_exp_ground(free_vars: &HashSet<RowVar>, exp: &BoolExp) -> bool {
     match exp {
         BoolExp::Empty(_) => true,
         BoolExp::NotMemberOf(terms, _) => terms.iter().all(|t| is_term_ground(free_vars, t)),
@@ -174,7 +174,7 @@ fn is_exp_ground<V>(free_vars: &HashSet<RowVar>, exp: &BoolExp<V>) -> bool {
 ///
 /// A term is ground if it is a literal or a free variable.
 ///
-fn is_term_ground<V>(free_vars: &HashSet<RowVar>, term: &RamTerm<V>) -> bool {
+fn is_term_ground(free_vars: &HashSet<RowVar>, term: &RamTerm) -> bool {
     match term {
         RamTerm::Lit(_) => true,
         RamTerm::RowLoad(var, _) => free_vars.contains(&var),

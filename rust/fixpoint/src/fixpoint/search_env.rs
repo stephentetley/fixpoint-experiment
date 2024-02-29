@@ -14,33 +14,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+use crate::fixpoint::ast::shared::{Value};
+
 #[derive(Debug)]
-pub struct SearchEnv<V>(Vec<Vec<V>>, Vec<V>);
+pub struct SearchEnv(Vec<Vec<Value>>, Vec<Value>);
 
 // TODO - do we want a mutable env, Flix uses arrays so it suggest we do?
 
-impl<V: Default + std::clone::Clone> SearchEnv<V> {
+impl SearchEnv {
     pub fn new(level: usize) -> Self {
         SearchEnv(vec![Vec::new(); level], vec![Default::default(); level])
     }
 
     
-    pub fn get_tuple_var(&self, i: usize, j: usize) -> &V {
+    pub fn get_tuple_var(&self, i: usize, j: usize) -> &Value {
         let SearchEnv(tuple_env, _) = self;
         &tuple_env[i][j]
     }
 
-    pub fn get_lat_var(&self, i: usize) -> &V {
+    pub fn get_lat_var(&self, i: usize) -> &Value {
         let SearchEnv(_, lat_env) = self;
         &lat_env[i]
     }
 
-    pub fn update_tuple_env(&mut self, i: usize, vals: Vec<V>) {
+    pub fn update_tuple_env(&mut self, i: usize, vals: Vec<Value>) {
         let SearchEnv(tuple_env, _) = self;
         tuple_env[i] = vals;
     }
 
-    pub fn update_lat_env(&mut self, i: usize, vals: V) {
+    pub fn update_lat_env(&mut self, i: usize, vals: Value) {
         let SearchEnv(_, lat_env) = self;
         lat_env[i] = vals;
     }

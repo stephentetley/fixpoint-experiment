@@ -14,12 +14,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
+
 use std::cmp::Ordering;
 use rpds::List;
-use crate::fixpoint::ast::ram;
 use crate::fixpoint::ast::ram::{RamStmt, RamTerm, RelOp, BoolExp, RowVar};
-use crate::fixpoint::ast::shared::{Denotation};
+use crate::fixpoint::ast::shared::{Value};
 use crate::fixpoint::search_env::{SearchEnv};
 use crate::fixpoint::database::{Database};
 
@@ -27,17 +26,17 @@ use crate::fixpoint::database::{Database};
 // TODO eliminate over use of `.clone()`
 
 
-pub fn interpret<V: Eq + Ord + std::hash::Hash + Default + std::clone::Clone + std::fmt::Display>(stmt: RamStmt<V>) -> Database<V> {
+pub fn interpret(stmt: RamStmt) -> Database {
     let mut db = Database::new();
     interpret_with_database(&mut db, stmt);
     db
 }
 
-pub fn interpret_with_database<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: RamStmt<V>) {
+pub fn interpret_with_database(db: &mut Database, stmt: RamStmt) {
     eval_stmt(db, &stmt);
 }
 
-fn eval_stmt<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, stmt: &RamStmt<V>) {
+fn eval_stmt(db: &mut Database, stmt: &RamStmt) {
     match stmt {
         RamStmt::Insert(rel_op) => { 
             let search_env = alloc_env(0, rel_op);
@@ -46,14 +45,14 @@ fn eval_stmt<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::
         RamStmt::Merge(src_sym, dst_sym) => {
             todo!()
             // let mut m1 = HashMap::new();
-            // let mut dst: &mut HashMap<Vec<V>, V> = match db.get(dst_sym) {
+            // let mut dst: &mut HashMap<Vec<Value>, Value> = match db.get(dst_sym) {
             //     Some(dst1) => todo!(), // dst1,
             //     None => {db.insert(dst_sym.clone(), m1.clone()); &mut m1},
             // };
             // match ram::into_denotation(&src_sym) {
             //     Denotation::Relational => {
             //         let mut m2 = HashMap::new();
-            //         let src_in_db: HashMap<Vec<V>, V> = db.get(src_sym).unwrap_or(&m2).clone();
+            //         let src_in_db: HashMap<Vec<Value>, Value> = db.get(src_sym).unwrap_or(&m2).clone();
             //         dst.extend(src_in_db.into_iter());
             //     },
             //     Denotation::Latticenal(_, _, lub, _) => {
@@ -87,7 +86,7 @@ fn eval_stmt<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::
 }
 
 
-fn alloc_env<V: Default + std::clone::Clone>(depth: i32, rel_op: &RelOp<V>) -> SearchEnv<V> {
+fn alloc_env(depth: i32, rel_op: &RelOp) -> SearchEnv {
     match rel_op {
         RelOp::Search(_, _, body)           => alloc_env(depth + 1, &*body),
         RelOp::Query(_, _, _, body)         => alloc_env(depth + 1, &*body),
@@ -97,7 +96,7 @@ fn alloc_env<V: Default + std::clone::Clone>(depth: i32, rel_op: &RelOp<V>) -> S
     }
 }
 
-fn eval_op<V: Ord + Default + std::clone::Clone + std::fmt::Display + std::hash::Hash>(db: &mut Database<V>, env: &SearchEnv<V>, op: &RelOp<V>) {
+fn eval_op(db: &mut Database, env: &SearchEnv, op: &RelOp) {
     match op {
         RelOp::Search(RowVar::Index(i), ram_sym, body) => {
             // let (tuple_env, lat_env) = env;
@@ -152,7 +151,7 @@ fn eval_op<V: Ord + Default + std::clone::Clone + std::fmt::Display + std::hash:
     }
 }
 
-fn eval_query<V: Ord + Default + std::clone::Clone + std::fmt::Display + std::hash::Hash>(env: &SearchEnv<V>, query: List<&(i32, RamTerm<V>)>, tuple: Vec<V>) -> Ordering {
+fn eval_query(env: &SearchEnv, query: List<&(i32, RamTerm)>, tuple: Vec<Value>) -> Ordering {
     match query.first() {
         None => Ordering::Equal,
         Some(x1) => {
@@ -170,16 +169,12 @@ fn eval_query<V: Ord + Default + std::clone::Clone + std::fmt::Display + std::ha
     }
 }
 
-fn eval_bool_exp<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + std::fmt::Display>(db: &mut Database<V>, env: &SearchEnv<V>, exprs: &Vec<BoolExp<V>>) -> bool {
+fn eval_bool_exp(db: &mut Database, env: &SearchEnv, exprs: &Vec<BoolExp>) -> bool {
     exprs
         .into_iter()
         .all(|exp| match exp {
             BoolExp::Empty(ram_sym) => {
                 db.eval_inplace(ram_sym.clone(), |hm| hm.is_empty())
-                // match db.get(ram_sym) {
-                //     None => true,
-                //     Some(m) => m.is_empty(),
-                // }
             },
             BoolExp::NotMemberOf(terms, ram_sym) => {
                 todo!()
@@ -248,8 +243,8 @@ fn eval_bool_exp<V: Eq + Ord + Default + std::hash::Hash + std::clone::Clone + s
         })
     }
 
-// Should this return &V ?
-fn eval_term<V: std::fmt::Display + Default + std::clone::Clone>(env: &SearchEnv<V>, term: &RamTerm<V>) -> V {
+// Should this return &Value ?
+fn eval_term(env: &SearchEnv, term: &RamTerm) -> Value {
     match term {
         RamTerm::Lit(v) => v.clone(),
         RamTerm::RowLoad(RowVar::Index(i), index) => {

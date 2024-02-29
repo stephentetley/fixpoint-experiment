@@ -18,7 +18,7 @@
 use std::collections::HashMap;
 use crate::fixpoint::ast::ram::{RelOp, BoolExp, RamStmt, RamTerm, RowVar};
 
-pub fn lower_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
+pub fn lower_stmt(stmt: RamStmt) -> RamStmt {
     match stmt {
         RamStmt::Insert(op) => {
             let op1 = lower_op(&HashMap::new(), 0, op);
@@ -31,7 +31,7 @@ pub fn lower_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
             let xs1 = xs
                 .into_iter()
                 .map(lower_stmt)
-                .collect::<Vec<RamStmt<V>>>();
+                .collect::<Vec<RamStmt>>();
             RamStmt::Seq(xs1)
         },
         RamStmt::Until(test, body) => {
@@ -43,7 +43,7 @@ pub fn lower_stmt<V>(stmt: RamStmt<V>) -> RamStmt<V> {
 }
 
 // TODO / WARNING this looks like it needs a persistent Map rather than HashMap...
-fn lower_op<V>(row_vars: &HashMap<RowVar, RowVar>, depth: i32, op: RelOp<V>) -> RelOp<V> {
+fn lower_op(row_vars: &HashMap<RowVar, RowVar>, depth: i32, op: RelOp) -> RelOp {
     match op {
         RelOp::Search(_var, ram_sym, body) => {
             let new_var = RowVar::Index(depth);
@@ -57,7 +57,7 @@ fn lower_op<V>(row_vars: &HashMap<RowVar, RowVar>, depth: i32, op: RelOp<V>) -> 
             let new_query = prefix_query
                 .into_iter()
                 .map(|(j, t)| (j, lower_term(row_vars, t)))
-                .collect::<Vec<(i32, RamTerm<V>)>>();
+                .collect::<Vec<(i32, RamTerm)>>();
             let body1 = lower_op(new_vars, depth + 1, *body);
             RelOp::Query(new_var, ram_sym, new_query, Box::new(body1))
         },
@@ -67,7 +67,7 @@ fn lower_op<V>(row_vars: &HashMap<RowVar, RowVar>, depth: i32, op: RelOp<V>) -> 
             let new_terms = terms
                 .into_iter()
                 .map(|t| lower_term(row_vars, t))
-                .collect::<Vec<RamTerm<V>>>();
+                .collect::<Vec<RamTerm>>();
             let new_body = lower_op(new_vars, depth + 1, *body);
             RelOp::Functional(new_var, f, new_terms, Box::new(new_body))
         },
@@ -75,28 +75,28 @@ fn lower_op<V>(row_vars: &HashMap<RowVar, RowVar>, depth: i32, op: RelOp<V>) -> 
             let terms1 = terms
                 .into_iter()
                 .map(|t| lower_term(row_vars, t))
-                .collect::<Vec<RamTerm<V>>>();
+                .collect::<Vec<RamTerm>>();
             RelOp::Project(terms1, ram_sym)
         },
         RelOp::If(test, then) => {
             let test1 = test
                 .into_iter()
                 .map(|e| lower_exp(row_vars, e))
-                .collect::<Vec<BoolExp<V>>>();
+                .collect::<Vec<BoolExp>>();
             let then1 = lower_op(row_vars, depth, *then);
             RelOp::If(test1, Box::new(then1))
         },
     }
 }
 
-fn lower_exp<V>(row_vars: &HashMap<RowVar, RowVar>, exp: BoolExp<V>) -> BoolExp<V> {
+fn lower_exp(row_vars: &HashMap<RowVar, RowVar>, exp: BoolExp) -> BoolExp {
     match exp {
         BoolExp::Empty(_) => exp,
         BoolExp::NotMemberOf(terms, ram_sym) => {
             let terms1 = terms
                 .into_iter()
                 .map(|t| lower_term(row_vars, t))
-                .collect::<Vec<RamTerm<V>>>();
+                .collect::<Vec<RamTerm>>();
             BoolExp::NotMemberOf(terms1, ram_sym)
         },
         BoolExp::Eq(lhs, rhs) => {
@@ -143,7 +143,7 @@ fn lower_exp<V>(row_vars: &HashMap<RowVar, RowVar>, exp: BoolExp<V>) -> BoolExp<
     }
 }
 
-fn lower_term<V>(row_vars: &HashMap<RowVar, RowVar>, term: RamTerm<V>) -> RamTerm<V> {
+fn lower_term(row_vars: &HashMap<RowVar, RowVar>, term: RamTerm) -> RamTerm {
     match term {
         RamTerm::Lit(_) => term,
         RamTerm::RowLoad(row_var, index) => 
