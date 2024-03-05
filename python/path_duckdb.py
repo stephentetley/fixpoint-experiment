@@ -18,7 +18,7 @@ def purge(table: str, *, con: duckdb.DuckDBPyConnection) -> None:
 
 def merge_into(table_from: str, table_into:str, columns: list[str], *, con: duckdb.DuckDBPyConnection) -> None:
     cols = ", ".join(columns)
-    con.execute(f"INSERT OR IGNORE INTO {table_into} ({cols}) SELECT {cols} FROM {table_from};")
+    con.execute(f"INSERT INTO {table_into} ({cols}) SELECT {cols} FROM {table_from};")
 
 def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
     ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
@@ -32,12 +32,12 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
 con.execute("CREATE OR REPLACE TABLE edge (edge_from INTEGER, edge_to INTEGER);")
-con.execute("CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
+con.execute("CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER);")
+con.execute("CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER);")
+con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER);")
 
 path1_sql = """
-    INSERT OR IGNORE INTO new_path (path_from, path_to) 
+    INSERT INTO new_path (path_from, path_to) 
     SELECT path_from, path_to FROM
         (SELECT t1.edge_from as path_from, t2.path_to as path_to 
         FROM edge t1
@@ -58,9 +58,6 @@ con.table("path").show()
 
 merge_into("path", "delta_path", ["path_from", "path_to"], con=con)
 
-print("delta_path")
-con.table("delta_path").show()
-
 
 # loop - use a vacuous condition, actual condition tested for before the `break` statement
 one_hundred = 100
@@ -70,6 +67,8 @@ while one_hundred > 0:
 
 
     con.execute(path1_sql)
+    print("new_path")
+    con.table("new_path").show()
 
 
     tcount = count_tuples("new_path", con=con)
