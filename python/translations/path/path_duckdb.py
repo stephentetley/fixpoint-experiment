@@ -4,7 +4,7 @@
 import duckdb
 
 
-duckdb_path = 'e:/coding/python/fixpoint-experiment/python/path.duckdb'
+duckdb_path = 'e:/coding/python/fixpoint-experiment/python/translations/path/path.duckdb'
 
 
 def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
@@ -63,12 +63,12 @@ merge_into("path", "delta_path", ["path_from", "path_to"], con=con)
 one_hundred = 100
 while one_hundred > 0:
     # purge
-    purge("new_path;", con=con)
+    purge("new_path", con=con)
 
 
     con.execute(path1_sql)
-    print("new_path")
-    con.table("new_path").show()
+    # print("new_path")
+    # con.table("new_path").show()
 
 
     tcount = count_tuples("new_path", con=con)
