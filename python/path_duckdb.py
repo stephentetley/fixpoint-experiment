@@ -6,16 +6,23 @@ import duckdb
 
 duckdb_path = 'e:/coding/python/fixpoint-experiment/python/path.duckdb'
 
+
+def swap(t1: str, t2: str, *, con: duckdb.DuckDBPyConnection) -> None:
+    con.execute(f"ALTER TABLE {t1} RENAME TO {t1}_swap;")
+    con.execute(f"ALTER TABLE {t2} RENAME TO {t1};")
+    con.execute(f"ALTER TABLE {t1}_swap RENAME TO {t2};")
+
+
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
 con.execute("CREATE OR REPLACE TABLE edge (edge_from INTEGER, edge_to INTEGER);")
 con.execute("CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER);")
-con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER);")
+con.execute("CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
+con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
 con.execute("CREATE OR REPLACE TABLE path_join (path_from INTEGER, path_to INTEGER);")
 
 
-con.execute("INSERT INTO edge (edge_from, edge_to) VALUES (1, 2), (2, 3);")
+con.execute("INSERT INTO edge (edge_from, edge_to) VALUES (1, 2), (2, 3), (3, 4);")
 print("edge")
 con.table("edge").show()
 
@@ -39,7 +46,7 @@ while one_hundred > 0:
 
     con.execute("DELETE FROM path_join;")
     con.execute("INSERT INTO path_join (path_from, path_to) SELECT l.edge_from AS path_from, r.path_to AS path_to FROM edge l JOIN delta_path r ON l.edge_to = r.path_from;")
-    con.execute("INSERT OR IGNORE INTO path (path_from, path_to) SELECT l.path_from, l.path_to FROM path_join l;")
+    con.execute("INSERT OR IGNORE INTO new_path (path_from, path_to) SELECT l.path_from, l.path_to FROM path_join l;")
 
 
     sc = con.execute("SELECT COUNT(*) FROM new_path;").fetchone()
@@ -56,9 +63,7 @@ while one_hundred > 0:
     con.execute("INSERT INTO path (path_from, path_to) SELECT path_from, path_to FROM new_path;")
     
     # swap(new_path, delta_path)
-    con.execute("ALTER TABLE new_path RENAME TO new_path1;")
-    con.execute("ALTER TABLE delta_path RENAME TO new_path;")
-    con.execute("ALTER TABLE new_path1 RENAME TO delta_path;")
+    swap("new_path", "delta_path", con=con)
 
 
 print("Done - path:")

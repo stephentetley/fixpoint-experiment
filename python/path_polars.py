@@ -20,7 +20,8 @@ def project_into(xs, df: pl.DataFrame) -> pl.DataFrame:
 def merge_into(df: pl.DataFrame, dest: pl.DataFrame) -> pl.DataFrame:
     c1 = df.schema.keys()
     df1 = df.select(c1)
-    return dest.vstack(df1)
+    df1 = dest.vstack(df1)
+    return df1.unique()
 
 def swap(df1: pl.DataFrame, df2: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
     return (df2, df1)
@@ -32,6 +33,7 @@ def purge(df: pl.DataFrame) -> pl.DataFrame:
 
 edge = project_into([[1], [2]], edge)
 edge = project_into([[2], [3]], edge)
+edge = project_into([[3], [4]], edge)
 
 print(edge)
 
@@ -62,7 +64,7 @@ while one_hundred > 0:
     print(path_join)
 
     for row in path_join.iter_rows(named=False): 
-        path = project_into([[row[0], row[1]]], path)
+        new_path = project_into([[row[0], row[1]]], path)
 
 
     count_tuples = new_path.select(pl.len()).item()
