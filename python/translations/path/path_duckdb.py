@@ -38,12 +38,17 @@ con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGE
 
 path1_sql = """
     INSERT INTO new_path (path_from, path_to) 
-    SELECT path_from, path_to FROM
-        (SELECT t1.edge_from as path_from, t2.path_to as path_to 
-        FROM edge t1
-        JOIN delta_path t2 ON t1.edge_to = t2.path_from)
-        EXCEPT
-        (SELECT t3.path_from, t3.path_to FROM new_path t3);
+    WITH cte1 AS (SELECT 
+        t1.edge_from AS path_from,
+        t2.path_to AS path_to,
+    FROM edge AS t1
+    JOIN delta_path t2 ON t1.edge_to = t2.path_from)
+    SELECT path_from, path_to FROM cte1
+    WHERE NOT EXISTS (
+        SELECT path_from, path_to
+        FROM path AS t2
+        WHERE t2.path_from = cte1.path_from AND t2.path_to = cte1.path_to
+    )
 """
 
 con.execute("INSERT INTO edge (edge_from, edge_to) VALUES (1, 2), (2, 3), (3, 4);")
