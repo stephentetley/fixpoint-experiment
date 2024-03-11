@@ -8,5 +8,7 @@ Experiments with Flix's fixpoint engine.
 
 `rust` - a port Flix's Datalog engine to Rust. Very early stages. Probably stuck...
 
+`sql` - experiments with CTEs
+
 License: Apache License, Version 2.0
 
