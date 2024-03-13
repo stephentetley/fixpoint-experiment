@@ -1,5 +1,5 @@
 # Figure 5 from On Fast Large-Scale Program Analysis in Datalog
-# use conda::datafusion-env [Ctrl+Shift+P then `Python: Select Interpreter`]
+# Note for me - use conda::datafusion-env [Ctrl+Shift+P then `Python: Select Interpreter`]
 
 import polars as pl
 

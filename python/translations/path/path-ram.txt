@@ -1,0 +1,50 @@
+********************************************************************************
+** Relation Algebra Machine AST
+********************************************************************************
+
+// Edge(BoxedInt32(1), BoxedInt32(2)).;
+project (BoxedInt32(1), BoxedInt32(2)) into Edge;
+// Edge(BoxedInt32(2), BoxedInt32(3)).;
+project (BoxedInt32(2), BoxedInt32(3)) into Edge;
+// Edge(BoxedInt32(3), BoxedInt32(4)).;
+project (BoxedInt32(3), BoxedInt32(4)) into Edge;
+// $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
+search 0$ ? Path do
+    project (0$[0], 0$[1]) into $Result
+end;
+// Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
+search 0$ ? Edge do
+    project (0$[0], 0$[1]) into Path
+end;
+// Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
+search 0$ ? Path do
+    query {1$ ? Edge | 1$[0] == 0$[1]} do
+        project (0$[0], 1$[1]) into Path
+    end
+end;
+merge $Result into ?$Result;
+merge Path into ?Path;
+until(?$Result == ? ? ?Path == ?) do
+    purge ?$Result';
+    purge ?Path';
+    // $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
+    search 0$ ? ?Path do
+        if((0$[0], 0$[1]) ? $Result) then
+            project (0$[0], 0$[1]) into ?$Result'
+        end
+    end;
+    // Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
+    // Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
+    search 0$ ? ?Path do
+        query {1$ ? Edge | 1$[0] == 0$[1]} do
+            if((0$[0], 1$[1]) ? Path) then
+                project (0$[0], 1$[1]) into ?Path'
+            end
+        end
+    end;
+    merge ?$Result' into $Result;
+    merge ?Path' into Path;
+    ?$Result := ?$Result';
+    ?Path := ?Path'
+end
+

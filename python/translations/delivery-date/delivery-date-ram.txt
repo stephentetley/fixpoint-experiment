@@ -1,0 +1,72 @@
+********************************************************************************
+** Relation Algebra Machine AST
+********************************************************************************
+
+// PartDepends(BoxedObject((Car, Obj -> Obj)), BoxedObject((Chassis, Obj -> Obj))).;
+project (BoxedObject((Car, Obj -> Obj)), BoxedObject((Chassis, Obj -> Obj))) into PartDepends;
+// PartDepends(BoxedObject((Car, Obj -> Obj)), BoxedObject((Engine, Obj -> Obj))).;
+project (BoxedObject((Car, Obj -> Obj)), BoxedObject((Engine, Obj -> Obj))) into PartDepends;
+// PartDepends(BoxedObject((Engine, Obj -> Obj)), BoxedObject((Piston, Obj -> Obj))).;
+project (BoxedObject((Engine, Obj -> Obj)), BoxedObject((Piston, Obj -> Obj))) into PartDepends;
+// PartDepends(BoxedObject((Engine, Obj -> Obj)), BoxedObject((Ignition, Obj -> Obj))).;
+project (BoxedObject((Engine, Obj -> Obj)), BoxedObject((Ignition, Obj -> Obj))) into PartDepends;
+// AssemblyTime(BoxedObject((Car, Obj -> Obj)), BoxedInt32(7)).;
+project (BoxedObject((Car, Obj -> Obj)), BoxedInt32(7)) into AssemblyTime;
+// AssemblyTime(BoxedObject((Engine, Obj -> Obj)), BoxedInt32(2)).;
+project (BoxedObject((Engine, Obj -> Obj)), BoxedInt32(2)) into AssemblyTime;
+// DeliveryDate(BoxedObject((Chassis, Obj -> Obj)); BoxedInt32(2)).;
+project (BoxedObject((Chassis, Obj -> Obj)), BoxedInt32(2)) into DeliveryDate;
+// DeliveryDate(BoxedObject((Piston, Obj -> Obj)); BoxedInt32(1)).;
+project (BoxedObject((Piston, Obj -> Obj)), BoxedInt32(1)) into DeliveryDate;
+// DeliveryDate(BoxedObject((Ignition, Obj -> Obj)); BoxedInt32(7)).;
+project (BoxedObject((Ignition, Obj -> Obj)), BoxedInt32(7)) into DeliveryDate;
+// ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
+search 0$ ? DeliveryDate do
+    project (0$[0], 0$[-1]) into ReadyDate
+end;
+// ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
+search 0$ ? PartDepends do
+    query {1$ ? AssemblyTime | 1$[0] == 0$[0]} do
+        query {2$ ? ReadyDate | 2$[0] == 0$[1]} do
+            project (0$[0], <clo>(2$[-1], 1$[1])) into ReadyDate
+        end
+    end
+end;
+merge ReadyDate into ?ReadyDate;
+until(?ReadyDate == ?) do
+    purge ?ReadyDate';
+    // ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
+    search 0$ ? DeliveryDate do
+        if((0$[0], 0$[-1]) ? ReadyDate) then
+            project (0$[0], 0$[-1]) into ?ReadyDate'
+        end
+    end;
+    // ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
+    search 0$ ? PartDepends do
+        query {1$ ? AssemblyTime | 1$[0] == 0$[0]} do
+            query {2$ ? ReadyDate | 2$[0] == 0$[1]} do
+                if((0$[0], <clo>(2$[-1], 1$[1])) ? ReadyDate) then
+                    project (0$[0], <clo>(2$[-1], 1$[1])) into ?ReadyDate'
+                end
+            end
+        end
+    end;
+    merge ?ReadyDate' into ReadyDate;
+    ?ReadyDate := ?ReadyDate'
+end;
+// $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
+search 0$ ? ReadyDate do
+    project (0$[0], 0$[-1]) into $Result
+end;
+merge $Result into ?$Result;
+until(?$Result == ?) do
+    purge ?$Result';
+    // $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
+    search 0$ ? ReadyDate do
+        if((0$[0], 0$[-1]) ? $Result) then
+            project (0$[0], 0$[-1]) into ?$Result'
+        end
+    end;
+    merge ?$Result' into $Result;
+    ?$Result := ?$Result'
+end

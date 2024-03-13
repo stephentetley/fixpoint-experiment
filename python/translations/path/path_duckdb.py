@@ -1,5 +1,4 @@
 # Figure 5 from On Fast Large-Scale Program Analysis in Datalog
-# use conda::datafusion-env [Ctrl+Shift+P then `Python: Select Interpreter`]
 
 import duckdb
 
@@ -39,10 +38,10 @@ con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGE
 path1_sql = """
     INSERT INTO new_path (path_from, path_to) 
     WITH cte1 AS (SELECT 
-        t1.edge_from AS path_from,
-        t2.path_to AS path_to,
-    FROM edge AS t1
-    JOIN delta_path t2 ON t1.edge_to = t2.path_from)
+            t1.edge_from AS path_from,
+            t2.path_to AS path_to,
+        FROM edge AS t1
+        JOIN delta_path t2 ON t1.edge_to = t2.path_from)
     SELECT path_from, path_to FROM cte1
     WHERE NOT EXISTS (
         SELECT path_from, path_to
