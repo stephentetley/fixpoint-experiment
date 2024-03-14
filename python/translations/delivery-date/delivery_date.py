@@ -1,9 +1,22 @@
 
 import duckdb
 
+# merge and purge are no clearer than using SQL directly
+
+def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
+    table_swap = f"{table1}_swap"
+    con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
+    con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
+    con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
 
-
+def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
+    ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
+    if ans1 is None:
+        return 0
+    else:
+        return ans1[0]
+    
 
 duckdb_path = 'e:/coding/python/fixpoint-experiment/python/translations/delivery-date/delivery-date.duckdb'
 
@@ -54,25 +67,13 @@ query = """
 """
 con.execute(query)
 
-con.execute(f"INSERT INTO delta_ready_date (part, days) SELECT part, days FROM ready_date;")
+con.execute("INSERT INTO delta_ready_date (part, days) SELECT part, days FROM ready_date;")
 
 
 # loop - use a vacuous condition, actual condition tested for before the `break` statement
 while True:
-    print("until...")
-    print("delta_ready_date")
-    con.table("delta_ready_date").show()
-    print("assembly_time")
-    con.table("assembly_time").show()
-    print("delivery_date")
-    con.table("delivery_date").show()
-    print("part_depends")
-    con.table("part_depends").show()
-    print("ready_date")
-    con.table("ready_date").show()
-
-
-    con.execute(f"DELETE FROM new_ready_date;")
+    # purge new_ready_date
+    con.execute("DELETE FROM new_ready_date;")
 
     # ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
     query = """
@@ -107,18 +108,11 @@ while True:
         FROM ready_date t3
     """
     con.execute(query)
-    print("new_ready_date")
-    con.table("new_ready_date").show()
 
     con.execute("INSERT INTO ready_date (part, days) SELECT part, days FROM new_ready_date ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
-    con.execute("ALTER TABLE new_ready_date RENAME TO new_ready_date_swap;")
-    con.execute("ALTER TABLE delta_ready_date RENAME TO new_ready_date;")
-    con.execute("ALTER TABLE new_ready_date_swap RENAME TO delta_ready_date;")
+    swap("new_ready_date", "delta_ready_date", con=con)
 
-    count = 0
-    ans1 = con.execute("SELECT COUNT(*) FROM delta_ready_date;").fetchone()
-    if ans1 is not None:
-        count = ans1[0]
+    count = count_tuples("delta_ready_date", con=con)
     print(f"loop - count: {count}")
     if count <= 0:
         break
@@ -132,10 +126,13 @@ query = """
     FROM ready_date;
 """
 con.execute(query)
+# merge
 con.execute("INSERT INTO delta_result (part, days) SELECT part, days FROM result ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
+
 
 while True:
 
+    # purge
     con.execute(f"DELETE FROM new_result;")
 
 
@@ -153,16 +150,11 @@ while True:
     """
     con.execute(query)
 
-
+    # merge
     con.execute("INSERT INTO result (part, days) SELECT part, days FROM new_result ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
-    con.execute("ALTER TABLE new_result RENAME TO new_result_swap;")
-    con.execute("ALTER TABLE delta_result RENAME TO new_result;")
-    con.execute("ALTER TABLE new_result_swap RENAME TO delta_result;")
+    swap("new_result", "delta_result", con=con)
 
-    count = 0
-    ans1 = con.execute("SELECT COUNT(*) FROM delta_result;").fetchone()
-    if ans1 is not None:
-        count = ans1[0]
+    count = count_tuples("delta_result", con=con)
     print(f"loop - count: {count}")
     if count <= 0:
         break
