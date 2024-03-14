@@ -64,8 +64,7 @@ merge_into("path", "delta_path", ["path_from", "path_to"], con=con)
 
 
 # loop - use a vacuous condition, actual condition tested for before the `break` statement
-one_hundred = 100
-while one_hundred > 0:
+while True:
     # purge
     purge("new_path", con=con)
 

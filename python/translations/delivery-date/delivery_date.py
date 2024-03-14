@@ -2,6 +2,9 @@
 import duckdb
 
 
+
+
+
 duckdb_path = 'e:/coding/python/fixpoint-experiment/python/translations/delivery-date/delivery-date.duckdb'
 
 
@@ -11,12 +14,9 @@ def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
-def purge(table: str, *, con: duckdb.DuckDBPyConnection) -> None:
-    con.execute(f"DELETE FROM {table};")
 
-def merge_into(table_from: str, table_into:str, columns: list[str], *, con: duckdb.DuckDBPyConnection) -> None:
-    cols = ", ".join(columns)
-    con.execute(f"INSERT INTO {table_into} ({cols}) SELECT {cols} FROM {table_from};")
+
+
 
 def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
     ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
@@ -28,6 +28,10 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
 
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
+
+# In RAM program:
+# ?ReadyDate  => delta_ready_date
+# ?ReadyDate' => new_ready_date
 
 con.execute("CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);")
 con.execute("CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER);")
@@ -63,25 +67,85 @@ con.execute("INSERT INTO delivery_date (component, DAYS) VALUES ('Chassis', 2), 
 print("delivery_date")
 con.table("delivery_date").show()
 
-sql1 = """
+# ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
+sp1 = """
     INSERT INTO ready_date(part, days)
     SELECT 
         component AS part,
         days AS days,
     FROM delivery_date;
 """
-con.execute(sql1)
+con.execute(sp1)
+print("ready_date")
+con.table("ready_date").show()
 
-sql2 = """
+# ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
+sp2 = """
+    INSERT INTO ready_date(part, days)
     SELECT 
         t0.part AS part,
         greatest(t2.days, t1.days) AS days,
     FROM part_depends t0
     JOIN assembly_time t1 ON t1.part = t0.part
-    JOIN ready_date t2 ON t2.part = t0.part;
+    JOIN ready_date t2 ON t2.part = t0.component
 """
-con.execute(sql1)
+con.execute(sp2)
+print("ready_date")
+con.table("ready_date").show()
+
+con.execute(f"INSERT INTO delta_ready_date (part, days) SELECT part, days FROM ready_date;")
+print("delta_ready_date")
+con.table("delta_ready_date").show()
+
+# loop - use a vacuous condition, actual condition tested for before the `break` statement
+while True:
+
+    con.execute(f"DELETE FROM new_ready_date;")
+
+    # ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
+    sp3 = """
+        INSERT INTO new_ready_date(part, days)
+        SELECT 
+            t0.component AS part,
+            t0.days AS days,
+        FROM delivery_date t0
+        EXCEPT
+        SELECT 
+            t1.part AS part,
+            t1.days AS days,
+        FROM ready_date t1
+    """
+    con.execute(sp3)
+    print("new_ready_date")
+    con.table("new_ready_date").show()
+
+    sp4 = """
+        INSERT INTO new_ready_date(part, days)
+        SELECT 
+            t0.part AS part,
+            greatest(t2.days, t1.days) AS days,
+        FROM part_depends t0
+        JOIN assembly_time t1 ON t1.part = t0.part
+        JOIN ready_date t2 ON t2.part = t0.component
+        EXCEPT
+        SELECT 
+            t3.part AS part,
+            t3.days AS days,
+        FROM ready_date t3
+    """
+    con.execute(sp4)
+    print("new_ready_date")
+    con.table("new_ready_date").show()
+
+
+
+    print("loop")
+    break
+
+
 
 # TODO
+
+
 
 con.close()
