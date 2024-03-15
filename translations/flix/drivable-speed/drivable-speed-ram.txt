@@ -1,0 +1,54 @@
+********************************************************************************
+** Relation Algebra Machine AST
+********************************************************************************
+
+// Road(BoxedObject((Rome, Obj -> Obj)), BoxedInt32(80), BoxedObject((Turin, Obj -> Obj))).;
+project (BoxedObject((Rome, Obj -> Obj)), BoxedInt32(80), BoxedObject((Turin, Obj -> Obj))) into Road;
+// Road(BoxedObject((Turin, Obj -> Obj)), BoxedInt32(70), BoxedObject((Naples, Obj -> Obj))).;
+project (BoxedObject((Turin, Obj -> Obj)), BoxedInt32(70), BoxedObject((Naples, Obj -> Obj))) into Road;
+// Road(BoxedObject((Naples, Obj -> Obj)), BoxedInt32(50), BoxedObject((Florence, Obj -> Obj))).;
+project (BoxedObject((Naples, Obj -> Obj)), BoxedInt32(50), BoxedObject((Florence, Obj -> Obj))) into Road;
+// $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
+query {0$ ? Path | 0$[0] == BoxedObject((Rome, Obj -> Obj)) ? 0$[1] == BoxedObject((Florence, Obj -> Obj))} do
+    project (BoxedObject(((), Obj -> Obj))) into $Result
+end;
+// Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
+search 0$ ? Road do
+    if(<clo>(0$[1])) then
+        project (0$[0], 0$[2]) into Path
+    end
+end;
+// Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
+search 0$ ? Path do
+    query {1$ ? Road | 1$[0] == 0$[1]} do
+        if(<clo>(1$[1])) then
+            project (0$[0], 1$[2]) into Path
+        end
+    end
+end;
+merge $Result into ?$Result;
+merge Path into ?Path;
+until(?$Result == ? ? ?Path == ?) do
+    purge ?$Result';
+    purge ?Path';
+    // $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
+    if((BoxedObject(((), Obj -> Obj))) ? $Result) then
+        query {0$ ? ?Path | 0$[0] == BoxedObject((Rome, Obj -> Obj)) ? 0$[1] == BoxedObject((Florence, Obj -> Obj))} do
+            project (BoxedObject(((), Obj -> Obj))) into ?$Result'
+        end
+    end;
+    // Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
+    // Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
+    search 0$ ? ?Path do
+        query {1$ ? Road | 1$[0] == 0$[1]} do
+            if(<clo>(1$[1]) ? (0$[0], 1$[2]) ? Path) then
+                project (0$[0], 1$[2]) into ?Path'
+            end
+        end
+    end;
+    merge ?$Result' into $Result;
+    merge ?Path' into Path;
+    ?$Result := ?$Result';
+    ?Path := ?Path'
+end
+
