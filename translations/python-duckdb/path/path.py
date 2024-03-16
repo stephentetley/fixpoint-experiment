@@ -3,7 +3,7 @@
 import duckdb
 
 
-duckdb_path = 'e:/coding/python/fixpoint-experiment/python/translations/path/path.duckdb'
+duckdb_path = 'e:/coding/python/fixpoint-experiment/translations/python-duckdb/path/path.duckdb'
 
 
 def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:

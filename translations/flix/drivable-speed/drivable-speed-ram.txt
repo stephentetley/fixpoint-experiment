@@ -9,46 +9,45 @@ project (BoxedObject((Turin, Obj -> Obj)), BoxedInt32(70), BoxedObject((Naples, 
 // Road(BoxedObject((Naples, Obj -> Obj)), BoxedInt32(50), BoxedObject((Florence, Obj -> Obj))).;
 project (BoxedObject((Naples, Obj -> Obj)), BoxedInt32(50), BoxedObject((Florence, Obj -> Obj))) into Road;
 // $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
-query {0$ ? Path | 0$[0] == BoxedObject((Rome, Obj -> Obj)) ? 0$[1] == BoxedObject((Florence, Obj -> Obj))} do
+query {0$ `member` Path | 0$[0] == BoxedObject((Rome, Obj -> Obj)) /\ 0$[1] == BoxedObject((Florence, Obj -> Obj))} do
     project (BoxedObject(((), Obj -> Obj))) into $Result
 end;
 // Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
-search 0$ ? Road do
+search 0$ `member` Road do
     if(<clo>(0$[1])) then
         project (0$[0], 0$[2]) into Path
     end
 end;
 // Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
-search 0$ ? Path do
-    query {1$ ? Road | 1$[0] == 0$[1]} do
+search 0$ `member` Path do
+    query {1$ `member` Road | 1$[0] == 0$[1]} do
         if(<clo>(1$[1])) then
             project (0$[0], 1$[2]) into Path
         end
     end
 end;
-merge $Result into ?$Result;
-merge Path into ?Path;
-until(?$Result == ? ? ?Path == ?) do
-    purge ?$Result';
-    purge ?Path';
+merge $Result into delta_$Result;
+merge Path into delta_Path;
+until(delta_$Result == <empty> /\ delta_Path == <empty>) do
+    purge new_$Result;
+    purge new_Path;
     // $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
-    if((BoxedObject(((), Obj -> Obj))) ? $Result) then
-        query {0$ ? ?Path | 0$[0] == BoxedObject((Rome, Obj -> Obj)) ? 0$[1] == BoxedObject((Florence, Obj -> Obj))} do
-            project (BoxedObject(((), Obj -> Obj))) into ?$Result'
+    if((BoxedObject(((), Obj -> Obj))) `not-member` $Result) then
+        query {0$ `member` delta_Path | 0$[0] == BoxedObject((Rome, Obj -> Obj)) /\ 0$[1] == BoxedObject((Florence, Obj -> Obj))} do
+            project (BoxedObject(((), Obj -> Obj))) into new_$Result
         end
     end;
     // Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
     // Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
-    search 0$ ? ?Path do
-        query {1$ ? Road | 1$[0] == 0$[1]} do
-            if(<clo>(1$[1]) ? (0$[0], 1$[2]) ? Path) then
-                project (0$[0], 1$[2]) into ?Path'
+    search 0$ `member` delta_Path do
+        query {1$ `member` Road | 1$[0] == 0$[1]} do
+            if(<clo>(1$[1]) /\ (0$[0], 1$[2]) `not-member` Path) then
+                project (0$[0], 1$[2]) into new_Path
             end
         end
     end;
-    merge ?$Result' into $Result;
-    merge ?Path' into Path;
-    ?$Result := ?$Result';
-    ?Path := ?Path'
+    merge new_$Result into $Result;
+    merge new_Path into Path;
+    delta_$Result := new_$Result;
+    delta_Path := new_Path
 end
-
