@@ -18,7 +18,7 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
         return ans1[0]
     
 
-duckdb_path = 'e:/coding/python/fixpoint-experiment/python/translations/delivery-date/delivery-date.duckdb'
+duckdb_path = 'e:/coding/python/fixpoint-experiment/translations/python-duckdb/delivery-date/delivery-date.duckdb'
 
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
@@ -33,9 +33,9 @@ con.execute("CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTE
 con.execute("CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
 con.execute("CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
 con.execute("CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE result (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE delta_result (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE new_result (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
+con.execute("CREATE OR REPLACE TABLE zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
+con.execute("CREATE OR REPLACE TABLE delta_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
+con.execute("CREATE OR REPLACE TABLE new_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
 
 
 con.execute("INSERT INTO part_depends (part, component) VALUES ('Car', 'Chassis'), ('Car', 'Engine'), ('Engine', 'Piston'), ('Engine', 'Ignition');")
@@ -109,6 +109,7 @@ while True:
     """
     con.execute(query)
 
+    # merge new_ReadyDate into ReadyDate;
     con.execute("INSERT INTO ready_date (part, days) SELECT part, days FROM new_ready_date ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
     swap("new_ready_date", "delta_ready_date", con=con)
 
@@ -117,27 +118,27 @@ while True:
     if count <= 0:
         break
 
-# T calc result...
+# calc zresult...
 query = """
-    INSERT INTO result(part, days)
+    INSERT INTO zresult(part, days)
     SELECT 
         part AS part,
         days AS days,
     FROM ready_date;
 """
 con.execute(query)
-# merge
-con.execute("INSERT INTO delta_result (part, days) SELECT part, days FROM result ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
+# merge $Result into delta_$Result;
+con.execute("INSERT INTO delta_zresult (part, days) SELECT part, days FROM zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
 
 
 while True:
 
-    # purge
-    con.execute(f"DELETE FROM new_result;")
+    # purge new_$Result;
+    con.execute(f"DELETE FROM new_zresult;")
 
 
     query = """
-        INSERT INTO new_result(part, days)
+        INSERT INTO new_zresult(part, days)
         SELECT 
             t0.part AS part,
             t0.days AS days,
@@ -146,22 +147,22 @@ while True:
         SELECT 
             t1.part AS part,
             t1.days AS days,
-        FROM result t1
+        FROM zresult t1
     """
     con.execute(query)
 
-    # merge
-    con.execute("INSERT INTO result (part, days) SELECT part, days FROM new_result ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
-    swap("new_result", "delta_result", con=con)
+    # merge new_$Result into $Result;
+    con.execute("INSERT INTO zresult (part, days) SELECT part, days FROM new_zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
+    swap("new_zresult", "delta_zresult", con=con)
 
-    count = count_tuples("delta_result", con=con)
-    print(f"loop - count: {count}")
-    if count <= 0:
+    delta_zresult_count = count_tuples("delta_zresult", con=con)
+    print(f"loop - count: {delta_zresult_count}")
+    if delta_zresult_count <= 0:
         break
 
 
-print("result")
-con.table("result").show()
+print("zresult")
+con.table("zresult").show()
 
 
 con.close()
