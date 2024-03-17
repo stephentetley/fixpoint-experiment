@@ -113,9 +113,9 @@ while True:
     con.execute("INSERT INTO ready_date (part, days) SELECT part, days FROM new_ready_date ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
     swap("new_ready_date", "delta_ready_date", con=con)
 
-    count = count_tuples("delta_ready_date", con=con)
-    print(f"loop - count: {count}")
-    if count <= 0:
+    delta_ready_date_count = count_tuples("delta_ready_date", con=con)
+    print(f"loop - delta_ready_date_count: {delta_ready_date_count}")
+    if delta_ready_date_count <= 0:
         break
 
 # calc zresult...
@@ -134,7 +134,7 @@ con.execute("INSERT INTO delta_zresult (part, days) SELECT part, days FROM zresu
 while True:
 
     # purge new_$Result;
-    con.execute(f"DELETE FROM new_zresult;")
+    con.execute("DELETE FROM new_zresult;")
 
 
     query = """
