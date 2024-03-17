@@ -9,42 +9,42 @@ project (BoxedInt32(2), BoxedInt32(3)) into Edge;
 // Edge(BoxedInt32(3), BoxedInt32(4)).;
 project (BoxedInt32(3), BoxedInt32(4)) into Edge;
 // $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
-search 0$ ? Path do
+search 0$ `member` Path do
     project (0$[0], 0$[1]) into $Result
 end;
 // Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
-search 0$ ? Edge do
+search 0$ `member` Edge do
     project (0$[0], 0$[1]) into Path
 end;
 // Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
-search 0$ ? Path do
-    query {1$ ? Edge | 1$[0] == 0$[1]} do
+search 0$ `member` Path do
+    query {1$ `member` Edge | 1$[0] == 0$[1]} do
         project (0$[0], 1$[1]) into Path
     end
 end;
-merge $Result into ?$Result;
-merge Path into ?Path;
-until(?$Result == ? ? ?Path == ?) do
-    purge ?$Result';
-    purge ?Path';
+merge $Result into delta_$Result;
+merge Path into delta_Path;
+until(delta_$Result == <empty> /\ delta_Path == <empty>) do
+    purge new_$Result;
+    purge new_Path;
     // $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
-    search 0$ ? ?Path do
-        if((0$[0], 0$[1]) ? $Result) then
-            project (0$[0], 0$[1]) into ?$Result'
+    search 0$ `member` delta_Path do
+        if((0$[0], 0$[1]) `not-member` $Result) then
+            project (0$[0], 0$[1]) into new_$Result
         end
     end;
     // Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
     // Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
-    search 0$ ? ?Path do
-        query {1$ ? Edge | 1$[0] == 0$[1]} do
-            if((0$[0], 1$[1]) ? Path) then
-                project (0$[0], 1$[1]) into ?Path'
+    search 0$ `member` delta_Path do
+        query {1$ `member` Edge | 1$[0] == 0$[1]} do
+            if((0$[0], 1$[1]) `not-member` Path) then
+                project (0$[0], 1$[1]) into new_Path
             end
         end
     end;
-    merge ?$Result' into $Result;
-    merge ?Path' into Path;
-    ?$Result := ?$Result';
-    ?Path := ?Path'
+    merge new_$Result into $Result;
+    merge new_Path into Path;
+    delta_$Result := new_$Result;
+    delta_Path := new_Path
 end
 
