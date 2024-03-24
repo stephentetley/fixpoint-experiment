@@ -1,0 +1,43 @@
+********************************************************************************
+** Relation Algebra Machine AST
+********************************************************************************
+
+// Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
+search 0$ `member` Friend do
+    query {1$ `member` Friend | 1$[0] == 0$[0]} do
+        query {2$ `member` Friend | 2$[0] == 0$[0]} do
+            if(<clo>(1$[1], 0$[1], 2$[1])) then
+                query {3$ `member` Friend | 3$[0] == 0$[1]} do
+                    if((0$[0], 3$[1]) `not-member` Friend) then
+                        query {4$ `member` Friend | 4$[0] == 1$[1] /\ 4$[1] == 3$[1]} do
+                            query {5$ `member` Friend | 5$[0] == 2$[1] /\ 5$[1] == 3$[1]} do
+                                project (0$[0], 3$[1]) into Suggestion
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end;
+// $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
+search 0$ `member` Suggestion do
+    project (0$[0], 0$[1]) into $Result
+end;
+merge $Result into delta_$Result;
+merge Suggestion into delta_Suggestion;
+until(delta_$Result == <empty> /\ delta_Suggestion == <empty>) do
+    purge new_$Result;
+    purge new_Suggestion;
+    // Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
+    // $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
+    search 0$ `member` delta_Suggestion do
+        if((0$[0], 0$[1]) `not-member` $Result) then
+            project (0$[0], 0$[1]) into new_$Result
+        end
+    end;
+    merge new_$Result into $Result;
+    merge new_Suggestion into Suggestion;
+    delta_$Result := new_$Result;
+    delta_Suggestion := new_Suggestion
+end
