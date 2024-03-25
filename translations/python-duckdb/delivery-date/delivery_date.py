@@ -27,9 +27,9 @@ con = duckdb.connect(database=duckdb_path, read_only=False)
 # ?ReadyDate  => delta_ready_date
 # ?ReadyDate' => new_ready_date
 
-con.execute("CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);")
-con.execute("CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER);")
-con.execute("CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER);")
+con.execute("CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);") 
+con.execute("CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
+con.execute("CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER, PRIMARY KEY(component));")
 con.execute("CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
 con.execute("CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
 con.execute("CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")

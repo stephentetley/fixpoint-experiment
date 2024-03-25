@@ -58,7 +58,6 @@ WITH params(i, gridref) AS (
         TRY_CAST(gridref[3:7] AS INTEGER) AS east_lower,
         TRY_CAST(gridref[8:12] AS INTEGER) AS north_lower,
     FROM params
-    
 ), decode_major(i, major_en) AS (
     SELECT i AS i, CASE 
         WHEN major = 'S' THEN {'easting': 0,        'northing': 0}
