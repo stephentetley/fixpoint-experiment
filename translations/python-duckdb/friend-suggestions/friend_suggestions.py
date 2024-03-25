@@ -48,13 +48,10 @@ query = """
         t3.friend AS newfriend,
     FROM friend t0
     JOIN friend t1 ON t1.me = t0.me
-    JOIN friend t2 ON t2.me = t0.me
-    JOIN friend t3 ON t3.me = t0.friend
+    JOIN friend t2 ON t2.me = t0.me AND pred1(t1.friend, t0.friend, t2.friend)
+    JOIN friend t3 ON t3.me = t0.friend AND NOT EXISTS (SELECT * FROM friend s4 WHERE s4.me = t0.me AND s4.friend = t3.friend)
     JOIN friend t4 ON t4.me = t1.friend AND t4.friend = t3.friend
-    JOIN friend t5 ON t5.me = t2.friend AND t5.friend = t3.friend
-    WHERE
-        pred1(t1.friend, t0.friend, t2.friend)
-    AND NOT EXISTS (SELECT * FROM friend s4 WHERE s4.me = t0.me AND s4.friend = t3.friend)
+    JOIN friend t5 ON t5.me = t2.friend AND t5.friend = t3.friend;
     """
 con.execute(query)
 

@@ -23,11 +23,16 @@ duckdb_path = 'e:/coding/python/fixpoint-experiment/translations/python-duckdb/d
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
+# param...
+drivable_speed = 30;
+
 # Define our own unit type
 con.execute("DROP TYPE IF EXISTS unit;")
 con.execute("CREATE TYPE unit AS ENUM ('unit');")
-con.execute("DROP MACRO IF EXISTS predicate1;")
-con.execute("CREATE MACRO predicate1(mph) AS (mph >= 51);")
+con.execute("DROP MACRO IF EXISTS arg_speed;")
+con.execute("DROP MACRO IF EXISTS pred1;")
+con.execute(f"CREATE MACRO arg_speed() AS (SELECT {drivable_speed});")
+con.execute("CREATE MACRO pred1(mph) AS (mph >= arg_speed());")
 
 con.execute("CREATE OR REPLACE TABLE road (source VARCHAR, max_speed INTEGER, destination VARCHAR);")
 con.execute("CREATE OR REPLACE TABLE path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));")
@@ -58,7 +63,7 @@ query = """
         t0.source AS source,
         t0.destination AS destination,
     FROM road t0
-    WHERE predicate1(t0.max_speed)
+    WHERE pred1(t0.max_speed)
     ON CONFLICT DO NOTHING;
 """
 con.execute(query)
@@ -70,8 +75,7 @@ query = """
         t0.source AS source,
         t0.destination AS destination,
     FROM path t0
-    JOIN road t1 ON t1.source = t0.destination
-    WHERE predicate1(t1.max_speed)
+    JOIN road t1 ON t1.source = t0.destination AND pred1(t1.max_speed)
     ON CONFLICT DO NOTHING;
 """
 con.execute(query)
@@ -110,8 +114,7 @@ while True:
             t0.source AS source,
             t1.destination AS destination,
         FROM delta_path t0
-        JOIN road t1 ON t1.SOURCE = t0.destination
-        WHERE predicate1(t1.max_speed) AND NOT EXISTS (SELECT * FROM path t2 WHERE t2.source = t0.source AND t2.destination = t1.destination)
+        JOIN road t1 ON t1.SOURCE = t0.destination AND pred1(t1.max_speed) AND NOT EXISTS (SELECT * FROM path s0 WHERE s0.source = t0.source AND s0.destination = t1.destination)
         ON CONFLICT DO NOTHING;
     """
     con.execute(query)

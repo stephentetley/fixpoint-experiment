@@ -89,7 +89,7 @@ while True:
             t0.path_from AS path_from,
             t0.path_to AS path_to,
         FROM delta_path t0
-        WHERE NOT EXISTS (SELECT * FROM zresult t1 WHERE t1.path_from = t0.path_from AND t1.path_to = t0.path_to)
+        WHERE NOT EXISTS (SELECT * FROM zresult s WHERE s.path_from = t0.path_from AND s.path_to = t0.path_to)
         ON CONFLICT DO NOTHING;
     """
     con.execute(query1)
@@ -102,8 +102,7 @@ while True:
             t0.path_from AS path_from,
             t1.edge_to AS path_to,
         FROM delta_path t0
-        JOIN edge t1 ON t1.edge_from = t0.path_to
-        WHERE NOT EXISTS (SELECT * FROM path t2 WHERE t2.path_from = t0.path_from AND t2.path_to = t1.edge_to)
+        JOIN edge t1 ON t1.edge_from = t0.path_to AND NOT EXISTS (SELECT * FROM path s WHERE s.path_from = t0.path_from AND s.path_to = t1.edge_to)
         ON CONFLICT DO NOTHING;
     """
     con.execute(query1)
