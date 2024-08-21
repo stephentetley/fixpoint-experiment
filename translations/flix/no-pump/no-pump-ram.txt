@@ -1,0 +1,68 @@
+********************************************************************************
+** Datalog Input
+********************************************************************************
+
+    System(BoxedObject((WDC01-WT-SYS01, Obj -> Obj)), BoxedObject((SPMS, Obj -> Obj)), BoxedObject((WCD01-WT, Obj -> Obj))).
+    SubSystem(BoxedObject((WDC01-WT-SYS01-KIS01, Obj -> Obj)), BoxedObject((KISK, Obj -> Obj)), BoxedObject((WDC01-WT-SYS01, Obj -> Obj))).
+    Pump(BoxedObject((ZAN01-WT-SYS02-PMP01, Obj -> Obj)), BoxedObject((Auto Pump-1, Obj -> Obj))).
+    $Result(VarSym(x1)) :- NoPump(VarSym(x1)).
+    HasPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), SubSystem(VarSym(ssfloc), BoxedObject((PUMP, Obj -> Obj)), VarSym(floc)), Pump(VarSym(ssfloc), _).
+    NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).
+
+
+********************************************************************************
+** Relation Algebra Machine AST
+********************************************************************************
+
+    // System(BoxedObject((WDC01-WT-SYS01, Obj -> Obj)), BoxedObject((SPMS, Obj -> Obj)), BoxedObject((WCD01-WT, Obj -> Obj))).;
+    project (BoxedObject((WDC01-WT-SYS01, Obj -> Obj)), BoxedObject((SPMS, Obj -> Obj)), BoxedObject((WCD01-WT, Obj -> Obj))) into System;
+    // SubSystem(BoxedObject((WDC01-WT-SYS01-KIS01, Obj -> Obj)), BoxedObject((KISK, Obj -> Obj)), BoxedObject((WDC01-WT-SYS01, Obj -> Obj))).;
+    project (BoxedObject((WDC01-WT-SYS01-KIS01, Obj -> Obj)), BoxedObject((KISK, Obj -> Obj)), BoxedObject((WDC01-WT-SYS01, Obj -> Obj))) into SubSystem;
+    // Pump(BoxedObject((ZAN01-WT-SYS02-PMP01, Obj -> Obj)), BoxedObject((Auto Pump-1, Obj -> Obj))).;
+    project (BoxedObject((ZAN01-WT-SYS02-PMP01, Obj -> Obj)), BoxedObject((Auto Pump-1, Obj -> Obj))) into Pump;
+    // HasPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), SubSystem(VarSym(ssfloc), BoxedObject((PUMP, Obj -> Obj)), VarSym(floc)), Pump(VarSym(ssfloc), _).;
+    search 0$ `member` System do
+        if(0$[1] == BoxedObject((SPMS, Obj -> Obj))) then
+            search 1$ `member` SubSystem do
+                if(1$[1] == BoxedObject((PUMP, Obj -> Obj)) /\ 1$[2] == 0$[0]) then
+                    query {2$ `member` Pump | 2$[0] == 1$[0]} do
+                        project (0$[0]) into HasPump
+                    end
+                end
+            end
+        end
+    end;
+    merge HasPump into delta_HasPump;
+    until(delta_HasPump == <empty>) do
+        purge new_HasPump;
+        // HasPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), SubSystem(VarSym(ssfloc), BoxedObject((PUMP, Obj -> Obj)), VarSym(floc)), Pump(VarSym(ssfloc), _).;
+        merge new_HasPump into HasPump;
+        delta_HasPump := new_HasPump
+    end;
+    // $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
+    search 0$ `member` NoPump do
+        project (0$[0]) into $Result
+    end;
+    // NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).;
+    search 0$ `member` System do
+        if((0$[0]) `not-member` HasPump /\ 0$[1] == BoxedObject((SPMS, Obj -> Obj))) then
+            project (0$[0]) into NoPump
+        end
+    end;
+    merge $Result into delta_$Result;
+    merge NoPump into delta_NoPump;
+    until(delta_$Result == <empty> /\ delta_NoPump == <empty>) do
+        purge new_$Result;
+        purge new_NoPump;
+        // $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
+        search 0$ `member` delta_NoPump do
+            if((0$[0]) `not-member` $Result) then
+                project (0$[0]) into new_$Result
+            end
+        end;
+        // NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).;
+        merge new_$Result into $Result;
+        merge new_NoPump into NoPump;
+        delta_$Result := new_$Result;
+        delta_NoPump := new_NoPump
+    end
