@@ -1,5 +1,5 @@
 # A "design rule" checker to assert a pump system has a child equipment pump
-
+import os
 import duckdb
 
 
@@ -20,7 +20,8 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
         return ans1[0]
     
 
-duckdb_path = 'e:/coding/projects/fixpoint-experiment/translations/python-duckdb/no-pump/no-pump.duckdb'
+dir_path = os.path.dirname(os.path.realpath(__file__))
+duckdb_path = os.path.normpath(os.path.join(dir_path, 'friend-suggestions.duckdb'))
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
@@ -28,8 +29,12 @@ table_ddl = """
     CREATE OR REPLACE TABLE system (floc VARCHAR, ty VARCHAR, parent VARCHAR);
     CREATE OR REPLACE TABLE sub_system (floc VARCHAR, ty VARCHAR, parent VARCHAR);
     CREATE OR REPLACE TABLE pump (floc VARCHAR, name VARCHAR);
-    CREATE OR REPLACE TABLE has_pump (floc VARCHAR);
-    CREATE OR REPLACE TABLE no_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE has_pump (floc VARCHAR, PRIMARY KEY(floc));
+    CREATE OR REPLACE TABLE delta_has_pump (floc VARCHAR, PRIMARY KEY(floc));
+    CREATE OR REPLACE TABLE new_has_pump (floc VARCHAR, PRIMARY KEY(floc));
+    CREATE OR REPLACE TABLE no_pump (floc VARCHAR, PRIMARY KEY(floc));
+    CREATE OR REPLACE TABLE delta_no_pump (floc VARCHAR, PRIMARY KEY(floc));
+    CREATE OR REPLACE TABLE new_no_pump (floc VARCHAR, PRIMARY KEY(floc));
     CREATE OR REPLACE TABLE zresult (floc VARCHAR, PRIMARY KEY(floc));
     CREATE OR REPLACE TABLE delta_zresult (floc VARCHAR, PRIMARY KEY(floc));
     CREATE OR REPLACE TABLE new_zresult (floc VARCHAR, PRIMARY KEY(floc));
@@ -46,7 +51,7 @@ tables_load = """
 con.execute(tables_load)
 
 # HasPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), SubSystem(VarSym(ssfloc), BoxedObject((PUMP, Obj -> Obj)), VarSym(floc)), Pump(VarSym(ssfloc), _).;
-query_HasPump1 = """
+project_into_HasPump1 = """
     INSERT INTO has_pump(floc)
     SELECT DISTINCT
         t0.floc AS floc,
@@ -55,83 +60,88 @@ query_HasPump1 = """
     JOIN pump t2 ON t2.floc = t1.floc
     WHERE t0.ty = 'SPMS';
 """
-con.execute(query_HasPump1)
+con.execute(project_into_HasPump1)
 
-# # Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
-# query = """
-#     INSERT INTO path(path_from, path_to)
-#     SELECT 
-#         t0.edge_from AS path_from,
-#         t0.edge_to AS path_to,
-#     FROM edge t0
-#     ON CONFLICT DO NOTHING;
-# """
-# con.execute(query)
+#  merge HasPump into delta_HasPump;
+con.execute("INSERT INTO delta_has_pump (floc) SELECT floc FROM has_pump ON CONFLICT DO NOTHING;")
 
-# # Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
-# query = """
-#     INSERT INTO path(path_from, path_to)
-#     SELECT 
-#         t0.path_from AS path_from,
-#         t0.path_to AS path_to,
-#     FROM path t0
-#     JOIN edge t1 ON t1.edge_from == t0.path_to
-#     ON CONFLICT DO NOTHING;
-# """
-# con.execute(query)
+while True:
+    # purge new_HasPump;
+    con.execute("DELETE FROM new_has_pump;")
 
-# # merge $Result into delta_$Result;
-# con.execute("INSERT INTO delta_zresult (path_from, path_to) SELECT path_from, path_to FROM zresult ON CONFLICT DO NOTHING;")
-# # merge Path into delta_Path;
-# con.execute("INSERT INTO delta_path (path_from, path_to) SELECT path_from, path_to FROM path ON CONFLICT DO NOTHING;")
+    # merge new_HasPump into HasPump;
+    con.execute("INSERT INTO has_pump (floc) SELECT floc FROM new_has_pump ON CONFLICT DO NOTHING;")
 
-
-# # loop - use a vacuous condition, actual condition tested for before the `break` statement
-# while True:
-#     # purge new_$Result;
-#     con.execute("DELETE FROM new_zresult;")
-#     # purge new_Path;
-#     con.execute("DELETE FROM new_path;")
-
-#     # $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
-#     query1 = """
-#         INSERT INTO new_zresult(path_from, path_to)
-#         SELECT 
-#             t0.path_from AS path_from,
-#             t0.path_to AS path_to,
-#         FROM delta_path t0
-#         WHERE NOT EXISTS (SELECT * FROM zresult s WHERE s.path_from = t0.path_from AND s.path_to = t0.path_to)
-#         ON CONFLICT DO NOTHING;
-#     """
-#     con.execute(query1)
-
-#     # Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
-#     # Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
-#     query1 = """
-#         INSERT INTO new_path(path_from, path_to)
-#         SELECT 
-#             t0.path_from AS path_from,
-#             t1.edge_to AS path_to,
-#         FROM delta_path t0
-#         JOIN edge t1 ON t1.edge_from = t0.path_to AND NOT EXISTS (SELECT * FROM path s WHERE s.path_from = t0.path_from AND s.path_to = t1.edge_to)
-#         ON CONFLICT DO NOTHING;
-#     """
-#     con.execute(query1)
-
-#     # merge new_$Result into $Result;
-#     con.execute("INSERT INTO zresult (path_from, path_to) SELECT path_from, path_to FROM new_zresult ON CONFLICT DO NOTHING;")
-#     # merge new_Path into Path;
-#     con.execute("INSERT INTO path (path_from, path_to) SELECT path_from, path_to FROM new_path ON CONFLICT DO NOTHING;")
+    # delta_HasPump := new_HasPump
+    swap("new_has_pump", "delta_has_pump", con=con)
     
-#     swap("delta_zresult",  "new_zresult", con=con);
-#     swap("delta_path", "new_path", con=con)
 
-#     delta_zresult_count = count_tuples("delta_zresult", con=con)
-#     delta_path_count = count_tuples("delta_path", con=con)
-#     print(f"loop - delta_zresult_count: {delta_zresult_count}, delta_path_count: {delta_path_count},")
-#     if delta_zresult_count <= 0 and delta_path_count <= 0:
-#         break
+    delta_has_pump_count = count_tuples("delta_has_pump", con=con)
+    print(f"loop - delta_has_pump_count: {delta_has_pump_count},")
+    if delta_has_pump_count <= 0:
+        break
 
+# $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
+project_into_zresult1 = """
+    INSERT INTO zresult(floc)
+    SELECT DISTINCT
+        t0.floc AS floc,
+    FROM no_pump t0;
+"""
+con.execute(project_into_zresult1)
+
+# NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).;
+project_into_no_pump1 = """
+    INSERT INTO no_pump(floc)
+    SELECT DISTINCT
+        t0.floc AS floc,
+    FROM system t0
+    WHERE NOT EXISTS (SELECT * FROM has_pump s0 WHERE s0.floc = t0.floc)
+    AND t0.ty = 'SPMS';
+"""
+con.execute(project_into_no_pump1)
+
+# merge $Result into delta_$Result;
+con.execute("INSERT INTO delta_zresult (floc) SELECT floc FROM zresult ON CONFLICT DO NOTHING;")
+
+# merge NoPump into delta_NoPump;
+con.execute("INSERT INTO delta_no_pump (floc) SELECT floc FROM no_pump ON CONFLICT DO NOTHING;")
+
+while True:
+    # purge new_$Result;
+    con.execute("DELETE FROM new_zresult;")
+
+    # purge new_NoPump;
+    con.execute("DELETE FROM new_no_pump;")
+
+    project_into_new_zresult1 = """
+        INSERT INTO new_zresult(floc)
+        SELECT 
+            t0.floc AS floc,
+        FROM delta_no_pump t0
+        WHERE NOT EXISTS (SELECT * FROM zresult s0 WHERE s0.floc = t0.floc)
+        """
+    con.execute(project_into_new_zresult1)
+
+    # NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).;
+    # merge new_$Result into $Result;
+    con.execute("INSERT INTO zresult (floc) SELECT floc FROM new_zresult ON CONFLICT DO NOTHING;")
+
+    # merge new_NoPump into NoPump;
+    con.execute("INSERT INTO no_pump (floc) SELECT floc FROM new_no_pump ON CONFLICT DO NOTHING;")
+
+    # delta_$Result := new_$Result;
+    swap("new_zresult", "delta_zresult", con=con)
+
+    # delta_NoPump := new_NoPump
+    swap("new_no_pump", "delta_no_pump", con=con)
+    
+
+    delta_zresult_count = count_tuples("delta_zresult", con=con)
+    delta_no_pump_count = count_tuples("delta_no_pump", con=con)
+    print(f"loop - delta_zresult_count: {delta_zresult_count}, delta_no_pump_count: {delta_no_pump_count}")
+    if delta_zresult_count <= 0 or delta_no_pump_count <= 0:
+        break
 
 print("zresult")
 con.table("zresult").show()

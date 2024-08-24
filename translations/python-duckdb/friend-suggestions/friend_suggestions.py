@@ -1,4 +1,4 @@
-
+import os
 import duckdb
 
 # merge and purge are no clearer than using SQL directly
@@ -16,9 +16,10 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
         return 0
     else:
         return ans1[0]
-    
 
-duckdb_path = 'e:/coding/python/fixpoint-experiment/translations/python-duckdb/friend-suggestions/friend-suggestions.duckdb'
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+duckdb_path = os.path.normpath(os.path.join(dir_path, 'friend-suggestions.duckdb'))
 
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
@@ -81,7 +82,7 @@ while True:
     # $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
     
     query = """
-        INSERT INTO zresult(friend, newfriend)
+        INSERT INTO new_zresult(friend, newfriend)
         SELECT 
             t0.friend AS friend,
             t0.newfriend AS newfriend,
