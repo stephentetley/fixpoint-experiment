@@ -26,15 +26,21 @@ duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-path.duckdb'))
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
-con.execute("CREATE OR REPLACE TABLE edge (edge_from INTEGER, edge_to INTEGER);")
-con.execute("CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE delta_zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
-con.execute("CREATE OR REPLACE TABLE new_zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));")
+table_ddl = """
+    CREATE OR REPLACE TABLE edge (edge_from INTEGER, edge_to INTEGER);
+    CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+    CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+    CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+    CREATE OR REPLACE TABLE zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+    CREATE OR REPLACE TABLE delta_zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+    CREATE OR REPLACE TABLE new_zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+"""
+con.execute(table_ddl)
 
-con.execute("INSERT INTO edge (edge_from, edge_to) VALUES (1, 2), (2, 3), (3, 4);")
+data_load = """
+    INSERT INTO edge (edge_from, edge_to) VALUES (1, 2), (2, 3), (3, 4);
+"""
+con.execute(data_load)
 
 # $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
 query = """

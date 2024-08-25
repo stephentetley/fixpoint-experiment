@@ -27,21 +27,36 @@ con = duckdb.connect(database=duckdb_path, read_only=False)
 # In RAM program:
 # ?ReadyDate  => delta_ready_date
 # ?ReadyDate' => new_ready_date
+table_ddl = """
+    CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);
+    CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER, PRIMARY KEY(component));
+    CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE delta_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE new_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+"""
+con.execute(table_ddl)
 
-con.execute("CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);") 
-con.execute("CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER, PRIMARY KEY(component));")
-con.execute("CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE delta_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
-con.execute("CREATE OR REPLACE TABLE new_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));")
+data_load = """
+INSERT INTO part_depends (part, component) VALUES 
+    ('Car', 'Chassis'), 
+    ('Car', 'Engine'), 
+    ('Engine', 'Piston'), 
+    ('Engine', 'Ignition');
 
+INSERT INTO assembly_time (part, days) VALUES 
+    ('Car', 7), 
+    ('Engine', 2);
 
-con.execute("INSERT INTO part_depends (part, component) VALUES ('Car', 'Chassis'), ('Car', 'Engine'), ('Engine', 'Piston'), ('Engine', 'Ignition');")
-con.execute("INSERT INTO assembly_time (part, DAYS) VALUES ('Car', 7), ('Engine', 2);")
-con.execute("INSERT INTO delivery_date (component, DAYS) VALUES ('Chassis', 2), ('Piston', 1), ('Ignition', 7);")
+INSERT INTO delivery_date (component, days) VALUES 
+    ('Chassis', 2), 
+    ('Piston', 1), 
+    ('Ignition', 7);
+"""
+con.execute(data_load)
 
 # ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
 query = """

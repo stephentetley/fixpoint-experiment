@@ -37,12 +37,12 @@ table_ddl = """
 """
 con.execute(table_ddl)
 
-tables_load = """
+data_load = """
     INSERT INTO friend (me, friend) VALUES 
             ('George', 'Antonio'), ('George', 'Sarah'), ('George', 'Roberto'), 
             ('Sarah', 'Hisham'), ('Antonio', 'Hisham'), ('Roberto', 'Hisham');
 """
-con.execute(tables_load)
+con.execute(data_load)
 
 
 # Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;

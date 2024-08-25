@@ -24,25 +24,34 @@ duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-drivable-speed.duckd
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
 # param...
-drivable_speed = 30;
+drivable_speed = 55;
 
 # Define our own unit type
-con.execute("DROP TYPE IF EXISTS unit;")
-con.execute("CREATE TYPE unit AS ENUM ('unit');")
-con.execute("DROP MACRO IF EXISTS arg_speed;")
-con.execute("DROP MACRO IF EXISTS pred1;")
-con.execute(f"CREATE MACRO arg_speed() AS (SELECT {drivable_speed});")
-con.execute("CREATE MACRO pred1(mph) AS (mph >= arg_speed());")
+table_ddl = f"""
+    DROP TYPE IF EXISTS unit;
+    CREATE TYPE unit AS ENUM ('unit');
+    DROP MACRO IF EXISTS arg_speed;
+    DROP MACRO IF EXISTS pred1;
+    CREATE MACRO arg_speed() AS (SELECT {drivable_speed});
+    CREATE MACRO pred1(mph) AS (mph >= arg_speed());
 
-con.execute("CREATE OR REPLACE TABLE road (source VARCHAR, max_speed INTEGER, destination VARCHAR);")
-con.execute("CREATE OR REPLACE TABLE path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));")
-con.execute("CREATE OR REPLACE TABLE delta_path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));")
-con.execute("CREATE OR REPLACE TABLE new_path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));")
-con.execute("CREATE OR REPLACE TABLE zresult (result unit, PRIMARY KEY(result));")
-con.execute("CREATE OR REPLACE TABLE delta_zresult (result unit, PRIMARY KEY(result));")
-con.execute("CREATE OR REPLACE TABLE new_zresult (result unit, PRIMARY KEY(result));")
+    CREATE OR REPLACE TABLE road (source VARCHAR, max_speed INTEGER, destination VARCHAR);
+    CREATE OR REPLACE TABLE path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));
+    CREATE OR REPLACE TABLE delta_path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));
+    CREATE OR REPLACE TABLE new_path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));
+    CREATE OR REPLACE TABLE zresult (result unit, PRIMARY KEY(result));
+    CREATE OR REPLACE TABLE delta_zresult (result unit, PRIMARY KEY(result));
+    CREATE OR REPLACE TABLE new_zresult (result unit, PRIMARY KEY(result));
+"""
+con.execute(table_ddl)
 
-con.execute("INSERT INTO road (source, max_speed, destination) VALUES ('Rome', 80, 'Turin'), ('Turin', 70, 'Naples'), ('Naples', 50, 'Florence');")
+data_load = """
+    INSERT INTO road (source, max_speed, destination) VALUES 
+        ('Rome', 80, 'Turin'), 
+        ('Turin', 70, 'Naples'), 
+        ('Naples', 50, 'Florence');
+"""
+con.execute(data_load)
 
 # $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
 query = """
