@@ -1,6 +1,7 @@
 # Figure 5 from On Fast Large-Scale Program Analysis in Datalog
 # The translation is of the Flix version in this repo.
 
+import os
 import duckdb
 
 
@@ -20,8 +21,8 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
     else:
         return ans1[0]
     
-
-duckdb_path = 'e:/coding/python/fixpoint-experiment/translations/python-duckdb/path/path.duckdb'
+dir_path = os.path.dirname(os.path.realpath(__file__))
+duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-path.duckdb'))
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 

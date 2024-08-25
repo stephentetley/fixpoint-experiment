@@ -21,7 +21,7 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
     
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-duckdb_path = os.path.normpath(os.path.join(dir_path, 'friend-suggestions.duckdb'))
+duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-no-pump.duckdb'))
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 

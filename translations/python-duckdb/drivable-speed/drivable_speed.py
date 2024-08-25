@@ -1,4 +1,4 @@
-
+import os
 import duckdb
 
 # merge and purge are no clearer than using SQL directly
@@ -17,8 +17,8 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
     else:
         return ans1[0]
     
-
-duckdb_path = 'e:/coding/python/fixpoint-experiment/translations/python-duckdb/drivable-speed/drivable-speed.duckdb'
+dir_path = os.path.dirname(os.path.realpath(__file__))
+duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-drivable-speed.duckdb'))
 
 
 con = duckdb.connect(database=duckdb_path, read_only=False)

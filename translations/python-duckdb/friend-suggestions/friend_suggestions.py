@@ -19,25 +19,30 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-duckdb_path = os.path.normpath(os.path.join(dir_path, 'friend-suggestions.duckdb'))
+duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-friend-suggestions.duckdb'))
 
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
+table_ddl = """
+    CREATE OR REPLACE TABLE friend (me VARCHAR, friend VARCHAR, PRIMARY KEY(me, friend));
+    CREATE OR REPLACE TABLE suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    CREATE OR REPLACE TABLE delta_suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    CREATE OR REPLACE TABLE new_suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    CREATE OR REPLACE TABLE zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    CREATE OR REPLACE TABLE delta_zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    CREATE OR REPLACE TABLE new_zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    DROP MACRO IF EXISTS pred1;
+    CREATE MACRO pred1(f1, f2, f3) AS f1 != f2 AND f2 != f3 AND f1 != f3;
+"""
+con.execute(table_ddl)
 
-con.execute("CREATE OR REPLACE TABLE friend (me VARCHAR, friend VARCHAR, PRIMARY KEY(me, friend));")
-con.execute("CREATE OR REPLACE TABLE suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));")
-con.execute("CREATE OR REPLACE TABLE delta_suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));")
-con.execute("CREATE OR REPLACE TABLE new_suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));")
-con.execute("CREATE OR REPLACE TABLE zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));")
-con.execute("CREATE OR REPLACE TABLE delta_zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));")
-con.execute("CREATE OR REPLACE TABLE new_zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));")
-con.execute("DROP MACRO IF EXISTS pred1;")
-con.execute("""CREATE MACRO pred1(f1, f2, f3) AS f1 != f2 AND f2 != f3 AND f1 != f3;""")
-
-con.execute("""INSERT INTO friend (me, friend) VALUES 
+tables_load = """
+    INSERT INTO friend (me, friend) VALUES 
             ('George', 'Antonio'), ('George', 'Sarah'), ('George', 'Roberto'), 
-            ('Sarah', 'Hisham'), ('Antonio', 'Hisham'), ('Roberto', 'Hisham');""")
+            ('Sarah', 'Hisham'), ('Antonio', 'Hisham'), ('Roberto', 'Hisham');
+"""
+con.execute(tables_load)
 
 
 # Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
