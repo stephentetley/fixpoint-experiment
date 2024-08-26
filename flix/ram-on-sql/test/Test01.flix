@@ -16,12 +16,23 @@
 
 mod Test01 {
 
-
-    use DatalogOnSql.Datatypes.{SqlType}
-    use DatalogOnSql.Datatypes.SqlType.{Varchar}
+    use Text.PrettyLevel.{PrettyLevel}
+    use RamOnSql.Datatypes.{SqlType}
+    use RamOnSql.Datatypes.SqlType.{Varchar}
 
     @test
     def test01(): Unit \ IO = 
-        println(Varchar)
+        println(Text.PrettyPrint.render(100, Text.Pretty.pPrint(Varchar)))
+
+
+    @test
+    def test02(): Unit \ IO = 
+        let src = RamOnSql.Datatypes.Table.Table("edge", List#{}, List#{});
+        println(Text.PrettyPrint.render(100, RamOnSql.Datatypes.ppCreateTable(src)))
+
+    @test
+    def test03(): Unit \ IO = 
+        let table = RamOnSql.Datatypes.Table.Table("new_has_pump", List#{}, List#{});
+        println(Text.PrettyPrint.render(100, RamOnSql.Sketch.purge(table)))
 
 }
