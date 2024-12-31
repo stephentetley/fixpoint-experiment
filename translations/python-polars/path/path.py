@@ -1,15 +1,9 @@
 # Figure 5 from On Fast Large-Scale Program Analysis in Datalog
 # Note for me - use conda::datafusion-env [Ctrl+Shift+P then `Python: Select Interpreter`]
+# VS-code [Ctrl+Shift+P then `Python: Select Interpreter`]
+
 
 import polars as pl
-
-
-edge = pl.DataFrame(data=None, schema={"edge_from": pl.Int64, "edge_to": pl.Int64})
-path = pl.DataFrame(data=None, schema={"path_from": pl.Int64, "path_to": pl.Int64})
-delta_path = pl.DataFrame(data=None, schema=path.schema)
-new_path = pl.DataFrame(data=None, schema=path.schema)
-
-print(edge)
 
 def project_into(xs, df: pl.DataFrame) -> pl.DataFrame:
     scm = df.schema
@@ -31,50 +25,82 @@ def purge(df: pl.DataFrame) -> pl.DataFrame:
     scm = df.schema
     return pl.DataFrame(data=None, schema=scm)
 
-edge = project_into([[1], [2]], edge)
-edge = project_into([[2], [3]], edge)
-edge = project_into([[3], [4]], edge)
 
-print(edge)
+edge = pl.DataFrame(data=None, schema={"edge_from": pl.Int64, "edge_to": pl.Int64})
+path = pl.DataFrame(data=None, schema={"path_from": pl.Int64, "path_to": pl.Int64})
+delta_path = pl.DataFrame(data=None, schema=path.schema)
+new_path = pl.DataFrame(data=None, schema=path.schema)
+zresult = pl.DataFrame(data=None, schema=path.schema)
+delta_zresult = pl.DataFrame(data=None, schema=path.schema)
+new_zresult = pl.DataFrame(data=None, schema=path.schema)
 
 
-for row in edge.iter_rows(named=False): 
-    path = project_into([[row[0], row[1]]], path)
+# [5,7,9]
+edge = project_into([{'edge_from': 1, 'edge_to': 2}, 
+                     {'edge_from': 2, 'edge_to': 3}, 
+                     {'edge_from': 3, 'edge_to': 4}], 
+                    edge)
+
+# [11] $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
+zresult = path.select(pl.col('path_from'), pl.col('path_to'))
+
+# [15] Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
+path = path.vstack(edge.select(pl.col('edge_from').alias('path_from'), pl.col('edge_to').alias('path_to')))
                         
 
-print("path:")
-print(path)
 
-# delta_path.vstack(path.select(["path_from", "path_to"]))
-delta_path = merge_into(path, delta_path) 
+# [19] Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
+temp = path.join(edge, left_on='path_to', right_on='edge_from', how='inner')
+path = path.vstack(temp.select(pl.col('path_to').alias('path_from'), pl.col('edge_to').alias('path_to'))) 
 
-print("delta_path:")
-print(delta_path)
+# [25] merge $Result into delta_$Result;
+delta_zresult = merge_into(zresult, delta_zresult)
 
+# [26] merge Path into delta_Path;
+delta_path = merge_into(path, delta_path)
 
 # loop - use a vacuous condition, actual condition tested for `break`
-one_hundred = 100
-while one_hundred > 0:
+while True:
+
     new_path = purge(new_path)
 
+    # [28] purge new_$Result;
+    new_zresult = purge(new_zresult)
+
+    # [29] purge new_Path;
+    new_path = purge(new_path)
     
-    path_join = edge.join(delta_path, left_on="edge_to", right_on="path_from", how="inner").rename({"edge_from": "path_from"}).drop(["edge_to"])
-    path_join = path_join.join(path, on=["path_from", "path_to"], how="anti")
-    print("path_join:")
-    print(path_join)
+    # [30] $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
+    temp = delta_path.join(zresult, on=['path_from', 'path_to'], how='anti')
+    new_zresult = new_zresult.vstack(temp)
 
-    for row in path_join.iter_rows(named=False): 
-        new_path = project_into([[row[0], row[1]]], path)
+    # [36] Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
+    # [37] Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
+    
+    temp = delta_path.join(edge, left_on='path_to', right_on='edge_from', how='inner').select(pl.col('path_from'), pl.col('edge_to').alias('path_to'))
+    temp = temp.join(path, on=['path_from', 'path_to'], how='anti')
+    new_path = new_path.vstack(temp)
+    
+    # [45] merge new_$Result into $Result;
+    zresult = merge_into(new_zresult, zresult)
 
+    # [46] merge new_Path into Path;
+    path = merge_into(new_path, path)
 
-    count_tuples = new_path.select(pl.len()).item()
-    print("count_tuples: {}".format(count_tuples))
+    # [47] delta_$Result := new_$Result;
+    delta_zresult = new_zresult
 
-    if count_tuples == 0: 
+    # [48] delta_Path := new_Path
+    delta_path = new_path
+
+    delta_zresult_count = delta_zresult.select(pl.len()).item()
+    delta_path_count = delta_path.select(pl.len()).item()
+
+    print("count_tuples: {}".format(delta_zresult_count + delta_path_count))
+
+    if delta_zresult_count == 0 and delta_path_count == 0: 
         break
     
-    path = merge_into(new_path, path)
-    new_path, delta_path = swap(new_path, delta_path)
 
 print("Done - path:")
 print(path)

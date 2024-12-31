@@ -20,7 +20,7 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
         return 0
     else:
         return ans1[0]
-    
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-path.duckdb'))
 
@@ -37,15 +37,16 @@ table_ddl = """
 """
 con.execute(table_ddl)
 
+# [5,7,9]
 data_load = """
     INSERT INTO edge (edge_from, edge_to) VALUES (1, 2), (2, 3), (3, 4);
 """
 con.execute(data_load)
 
-# $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
+# [11] $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
 query = """
     INSERT INTO zresult(path_from, path_to)
-    SELECT 
+    SELECT
         t0.path_from AS path_from,
         t0.path_to AS path_to,
     FROM path t0
@@ -53,10 +54,10 @@ query = """
 """
 con.execute(query)
 
-# Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
+# [15] Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
 query = """
     INSERT INTO path(path_from, path_to)
-    SELECT 
+    SELECT
         t0.edge_from AS path_from,
         t0.edge_to AS path_to,
     FROM edge t0
@@ -64,12 +65,12 @@ query = """
 """
 con.execute(query)
 
-# Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
+# [19] Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
 query = """
     INSERT INTO path(path_from, path_to)
-    SELECT 
+    SELECT
         t0.path_from AS path_from,
-        t0.path_to AS path_to,
+        t1.edge_to AS path_to,
     FROM path t0
     JOIN edge t1 ON t1.edge_from == t0.path_to
     ON CONFLICT DO NOTHING;

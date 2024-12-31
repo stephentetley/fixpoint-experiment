@@ -114,6 +114,7 @@ while True:
     # purge new_NoPump;
     con.execute("DELETE FROM new_no_pump;")
 
+    # $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
     project_into_new_zresult1 = """
         INSERT INTO new_zresult(floc)
         SELECT 
