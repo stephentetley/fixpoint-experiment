@@ -41,20 +41,20 @@ table_ddl = """
 con.execute(table_ddl)
 
 data_load = """
-INSERT INTO part_depends (part, component) VALUES 
-    ('Car', 'Chassis'), 
-    ('Car', 'Engine'), 
-    ('Engine', 'Piston'), 
-    ('Engine', 'Ignition');
+    INSERT INTO part_depends (part, component) VALUES 
+        ('Car', 'Chassis'), 
+        ('Car', 'Engine'), 
+        ('Engine', 'Piston'), 
+        ('Engine', 'Ignition');
 
-INSERT INTO assembly_time (part, days) VALUES 
-    ('Car', 7), 
-    ('Engine', 2);
+    INSERT INTO assembly_time (part, days) VALUES 
+        ('Car', 7), 
+        ('Engine', 2);
 
-INSERT INTO delivery_date (component, days) VALUES 
-    ('Chassis', 2), 
-    ('Piston', 1), 
-    ('Ignition', 7);
+    INSERT INTO delivery_date (component, days) VALUES 
+        ('Chassis', 2), 
+        ('Piston', 1), 
+        ('Ignition', 7);
 """
 con.execute(data_load)
 
@@ -86,8 +86,8 @@ con.execute(query)
 con.execute("INSERT INTO delta_ready_date (part, days) SELECT part, days FROM ready_date;")
 
 
-# loop - use a vacuous condition, actual condition tested for before the `break` statement
-while True:
+delta_ready_date_count = 1
+while not (delta_ready_date_count == 0):
     # purge new_ready_date
     con.execute("DELETE FROM new_ready_date;")
 

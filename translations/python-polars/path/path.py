@@ -59,11 +59,8 @@ delta_zresult = merge_into(zresult, delta_zresult)
 # [26] merge Path into delta_Path;
 delta_path = merge_into(path, delta_path)
 
-# loop - use a vacuous condition, actual condition tested for `break`
-while True:
-
-    new_path = purge(new_path)
-
+delta_zresult_count, delta_path_count = 1, 1
+while not (delta_zresult_count == 0 and delta_path_count == 0):
     # [28] purge new_$Result;
     new_zresult = purge(new_zresult)
 
@@ -98,8 +95,6 @@ while True:
 
     print("count_tuples: {}".format(delta_zresult_count + delta_path_count))
 
-    if delta_zresult_count == 0 and delta_path_count == 0: 
-        break
     
 
 print("Done - path:")
