@@ -23,8 +23,10 @@ duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-drivable-speed.duckd
 
 con = duckdb.connect(database=duckdb_path, read_only=False)
 
-# param...
-drivable_speed = 55;
+# param... 45 is drivable, 55 isn't
+drivable_speed = 55
+
+print(f"Is drivable at {drivable_speed}? ... check result table has an entry:")
 
 # Define our own unit type
 table_ddl = f"""
@@ -53,7 +55,7 @@ data_load = """
 """
 con.execute(data_load)
 
-# $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
+# [11] $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
 query = """
     INSERT INTO zresult(result)
     SELECT 
@@ -65,7 +67,7 @@ query = """
 """
 con.execute(query)
 
-# Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
+# [15] Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
 query = """
     INSERT INTO path(source, destination)
     SELECT 
@@ -77,32 +79,32 @@ query = """
 """
 con.execute(query)
 
-# Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
+# [21] Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
 query = """
     INSERT INTO path(source, destination)
     SELECT 
         t0.source AS source,
-        t0.destination AS destination,
+        t1.destination AS destination,
     FROM path t0
     JOIN road t1 ON t1.source = t0.destination AND pred1(t1.max_speed)
     ON CONFLICT DO NOTHING;
 """
 con.execute(query)
 
-# merge $Result into delta_$Result;
+# [29] merge $Result into delta_$Result;
 con.execute("INSERT INTO delta_zresult (result) SELECT result FROM zresult ON CONFLICT DO NOTHING;")
-# merge Path into delta_Path;
+# [30] merge Path into delta_Path;
 con.execute("INSERT INTO delta_path (source, destination) SELECT source, destination FROM path ON CONFLICT DO NOTHING;")
 
 
-
-while True:
-    # purge new_$Result;
+delta_zresult_count, delta_path_count = 1, 1
+while not (delta_zresult_count == 0 and delta_path_count == 0):
+    # [32] purge new_$Result;
     con.execute("DELETE FROM new_zresult;")
-    # purge new_Path;
+    # [33] purge new_Path;
     con.execute("DELETE FROM new_path;")
 
-    # $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
+    # [34] $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
     query = """
         INSERT INTO new_zresult(result) 
         SELECT 
@@ -115,8 +117,8 @@ while True:
     """
     con.execute(query)
 
-    # Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
-    # Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
+    # [40] Path(VarSym(x), VarSym(y)) :- Road(VarSym(x), VarSym(maximumSpeed), VarSym(y)), <clo>(VarSym(maximumSpeed)).;
+    # [41] Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Road(VarSym(y), VarSym(maximumSpeed), VarSym(z)), <clo>(VarSym(maximumSpeed)).;
     query = """
         INSERT INTO new_path(source, destination) 
         SELECT 
@@ -128,18 +130,19 @@ while True:
     """
     con.execute(query)
 
-    # merge new_$Result into $Result;
+    # [49] merge new_$Result into $Result;
     con.execute("INSERT INTO zresult (result) SELECT result FROM new_zresult ON CONFLICT DO NOTHING;")
-    # merge new_Path into Path;
+    # [50] merge new_Path into Path;
     con.execute("INSERT INTO path (source, destination) SELECT source, destination FROM new_path ON CONFLICT DO NOTHING;")
+    # [51] delta_$Result := new_$Result;
     swap("delta_zresult", "new_zresult", con=con)
+    # [52] delta_Path := new_Path
     swap("delta_path", "new_path", con=con)
 
     delta_zresult_count = count_tuples("delta_zresult", con=con)
     delta_path_count = count_tuples("delta_path", con=con)
     print(f"loop - delta_zresult_count: {delta_zresult_count}, delta_path_count: {delta_path_count},")
-    if delta_zresult_count <= 0 and delta_path_count <= 0:
-        break
+
 
 
 print("zresult")

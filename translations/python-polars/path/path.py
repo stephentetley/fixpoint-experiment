@@ -59,8 +59,8 @@ delta_zresult = merge_into(zresult, delta_zresult)
 # [26] merge Path into delta_Path;
 delta_path = merge_into(path, delta_path)
 
-delta_zresult_count, delta_path_count = 1, 1
-while not (delta_zresult_count == 0 and delta_path_count == 0):
+delta_zresult_empty, delta_path_empty = False, False
+while not (delta_zresult_empty and delta_path_empty):
     # [28] purge new_$Result;
     new_zresult = purge(new_zresult)
 
@@ -90,10 +90,10 @@ while not (delta_zresult_count == 0 and delta_path_count == 0):
     # [48] delta_Path := new_Path
     delta_path = new_path
 
-    delta_zresult_count = delta_zresult.select(pl.len()).item()
-    delta_path_count = delta_path.select(pl.len()).item()
+    delta_zresult_empty = delta_zresult.is_empty()
+    delta_path_empty = delta_path.is_empty()
 
-    print("count_tuples: {}".format(delta_zresult_count + delta_path_count))
+    print(f"empty_deltas: {delta_zresult_empty} {delta_path_empty}")
 
     
 

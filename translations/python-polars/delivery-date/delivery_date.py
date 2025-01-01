@@ -44,9 +44,6 @@ part_depends = project_into([{'part': 'Car', 'component': 'Chassis'},
                              {'part': 'Engine', 'component': 'Ignition'}], 
                              part_depends)
 
-print(part_depends)
-
-
 # [13,15]
 assembly_time = project_into([{'part': 'Car', 'days': 7}, 
                               {'part': 'Engine', 'days': 2}], 
@@ -62,8 +59,6 @@ delivery_date = project_into([{'component': 'Chassis', 'days': 2},
 
 # [23] ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
 ready_date = delivery_date.select(pl.col('component').alias('part'), pl.col('days'))
-print("ready_date...")
-print(ready_date)
 
 
 # [27] ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
@@ -75,11 +70,9 @@ ready_date = ready_date.vstack(temp)
 
 # [35] merge ReadyDate into delta_ReadyDate;
 delta_ready_date = merge_into(ready_date, delta_ready_date)
-print(delta_ready_date)
 
-
-delta_ready_date_count = 1
-while not (delta_ready_date_count == 0):
+delta_ready_date_empty = False
+while not (delta_ready_date_empty):
 
     # [37] purge new_ReadyDate;
     new_ready_date = purge(new_ready_date)
@@ -102,8 +95,8 @@ while not (delta_ready_date_count == 0):
     # [55] delta_ReadyDate := new_ReadyDate
     delta_ready_date = new_ready_date
 
-    delta_ready_date_count = delta_ready_date.select(pl.len()).item()
-    print("count_tuples: {}".format(delta_ready_date_count))
+    delta_ready_date_empty = delta_ready_date.is_empty()
+    print(f"empty_deltas: {delta_ready_date_empty}")
 
 
 # [57] $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
@@ -113,21 +106,21 @@ zresult = zresult.vstack(ready_date)
 # [61] merge $Result into delta_$Result;
 delta_zresult = merge_into(zresult, delta_zresult)
 
-delta_zresult_count = 1
-while not (delta_zresult_count == 0):
+delta_zresult_empty = False
+while not (delta_zresult_empty):
     new_zresult = purge(new_zresult)
     # [64] $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
     temp = ready_date.join(zresult, on=['part', 'days'], how='anti')
     new_zresult = new_zresult.vstack(temp)
     
-    # merge new_$Result into $Result;
+    # [70] merge new_$Result into $Result;
     zresult = merge_into(new_zresult, zresult)
     
-    # delta_$Result := new_$Result
+    # [71] delta_$Result := new_$Result
     delta_zresult = new_zresult
 
-    delta_zresult_count = delta_zresult.select(pl.len()).item()
-    print("count_tuples: {}".format(delta_zresult_count))
+    delta_zresult_empty = delta_zresult.is_empty()
+    print(f"empty_deltas: {delta_zresult_empty}")
 
 print("zresult...")
 print(zresult)
