@@ -1,5 +1,11 @@
+# Note - the Flix original uses a lattice (Int32) _and_ addition in the rule head for ReadyDate
+# Join (leastUpperBounds) for Int32 is Int32.max(x, y)
+
+
+
 import duckdb
 import ram_machine.prelude as ram
+
 
 
 con = duckdb.connect()
@@ -58,7 +64,7 @@ query = """
         part_depends t0
     JOIN assembly_time t1 ON t1.part = t0.part
     JOIN ready_date t2 ON t2.part = t0.component
-    GROUP BY t0.part
+    GROUP BY t0.part;
 """
 con.execute(query)
 
@@ -72,6 +78,10 @@ while not (delta_ready_date_empty):
     # [37] urge new_ready_date
     ram.purge_table(con, "new_ready_date")
 
+    print("[37] ready_date")
+    con.table("ready_date").show()
+
+
     # [38] ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
     query = """
         INSERT INTO new_ready_date(part, days)
@@ -82,26 +92,30 @@ while not (delta_ready_date_empty):
         ANTI JOIN ready_date t1 ON (t0.component = t1.part AND t0.days = t1.days)
     """
     con.execute(query)
+    print("[38] new_ready_date")
+    con.table("new_ready_date").show()
 
     # [44] ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
     query = """
         INSERT INTO new_ready_date(part, days)
+        WITH cte AS (
+            SELECT 
+                t0.part AS part,
+                max(t1.days + t2.days) AS days,
+            FROM 
+                part_depends t0
+            JOIN assembly_time t1 ON t1.part = t0.part
+            JOIN ready_date t2 ON t2.part = t0.component
+            GROUP BY t0.part
+        )
         SELECT 
-            t0.part AS part,
-            max(t1.days + t2.days) AS days,
-        FROM 
-            part_depends t0,
-            assembly_time t1,
-            ready_date t2,
-        WHERE t1.part = t0.part AND t2.part = t0.component
-        GROUP BY t0.part
-        EXCEPT
-        SELECT 
-            t3.part AS part,
-            t3.days AS days,
-        FROM ready_date t3
+            part, days 
+        FROM cte
+        ANTI JOIN ready_date USING (part, days)
     """
     con.execute(query)
+    print("[44] new_ready_date")
+    con.table("new_ready_date").show()
 
     # [54] merge new_ReadyDate into ReadyDate;
     ram.merge_into(con, src='new_ready_date', dest='ready_date', cols=['part', 'days'])
