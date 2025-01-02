@@ -3,7 +3,16 @@ import os
 import duckdb
 
 
-# merge is no clearer than using SQL directly
+# merge - src and ddest columns must have the same names
+def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {dest}({columns})
+        SELECT {columns} 
+        FROM {src}
+        ANTI JOIN {dest} USING({columns})
+    """
+    con.execute(query)
 
 def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
@@ -61,7 +70,7 @@ project_into_HasPump1 = """
 con.execute(project_into_HasPump1)
 
 #  merge HasPump into delta_HasPump;
-con.execute("INSERT INTO delta_has_pump (floc) SELECT floc FROM has_pump ON CONFLICT DO NOTHING;")
+merge_into(con, src='has_pump', dest='delta_has_pump', cols=['floc'])
 
 delta_has_pump_empty = False
 while not (delta_has_pump_empty):
@@ -69,7 +78,7 @@ while not (delta_has_pump_empty):
     purge_table(con, "new_has_pump")
 
     # merge new_HasPump into HasPump;
-    con.execute("INSERT INTO has_pump (floc) SELECT floc FROM new_has_pump ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_has_pump', dest='has_pump', cols=['floc'])
 
     # delta_HasPump := new_HasPump
     swap(con, "new_has_pump", "delta_has_pump")
@@ -99,10 +108,11 @@ project_into_no_pump1 = """
 con.execute(project_into_no_pump1)
 
 # merge $Result into delta_$Result;
-con.execute("INSERT INTO delta_zresult (floc) SELECT floc FROM zresult ON CONFLICT DO NOTHING;")
+merge_into(con, src='zresult', dest='delta_zresult', cols=['floc'])
 
 # merge NoPump into delta_NoPump;
-con.execute("INSERT INTO delta_no_pump (floc) SELECT floc FROM no_pump ON CONFLICT DO NOTHING;")
+merge_into(con, src='no_pump', dest='delta_no_pump', cols=['floc'])
+
 
 delta_zresult_empty, delta_no_pump_empty = False, False
 while not (delta_zresult_empty and delta_no_pump_empty):
@@ -124,10 +134,11 @@ while not (delta_zresult_empty and delta_no_pump_empty):
 
     # NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).;
     # merge new_$Result into $Result;
-    con.execute("INSERT INTO zresult (floc) SELECT floc FROM new_zresult ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_zresult', dest='zresult', cols=['floc'])
+    
 
     # merge new_NoPump into NoPump;
-    con.execute("INSERT INTO no_pump (floc) SELECT floc FROM new_no_pump ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_no_pump', dest='no_pump', cols=['floc'])
 
     # delta_$Result := new_$Result;
     swap(con, "new_zresult", "delta_zresult")

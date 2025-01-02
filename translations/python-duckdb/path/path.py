@@ -1,7 +1,6 @@
 # Figure 5 from On Fast Large-Scale Program Analysis in Datalog
 # The translation is of the Flix version in this repo.
 
-import os
 import duckdb
 
 
@@ -9,7 +8,7 @@ import duckdb
 def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
     columns = ", ".join(cols)
     query = f"""
-        INSERT INTO zresult({columns})
+        INSERT INTO {dest}({columns})
         SELECT {columns} 
         FROM {src}
         ANTI JOIN {dest} USING({columns})
@@ -86,9 +85,10 @@ query = """
 con.execute(query)
 
 # merge $Result into delta_$Result;
-con.execute("INSERT INTO delta_zresult (path_from, path_to) SELECT path_from, path_to FROM zresult ON CONFLICT DO NOTHING;")
+merge_into(con, src='zresult', dest='delta_zresult', cols=["path_from", "path_to"])
+
 # merge Path into delta_Path;
-con.execute("INSERT INTO delta_path (path_from, path_to) SELECT path_from, path_to FROM path ON CONFLICT DO NOTHING;")
+merge_into(con, src='path', dest='delta_path', cols=["path_from", "path_to"])
 
 
 delta_zresult_empty, delta_path_empty = False, False
