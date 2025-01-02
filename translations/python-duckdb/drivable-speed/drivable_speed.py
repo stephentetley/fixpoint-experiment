@@ -10,12 +10,10 @@ def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
 
-def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
-    ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
-    if ans1 is None:
-        return 0
-    else:
-        return ans1[0]
+def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
+    ans1 = con.execute(query).fetchone()
+    return (ans1[0] == 0)
     
 
 con = duckdb.connect()
@@ -94,8 +92,8 @@ con.execute("INSERT INTO delta_zresult (result) SELECT result FROM zresult ON CO
 con.execute("INSERT INTO delta_path (source, destination) SELECT source, destination FROM path ON CONFLICT DO NOTHING;")
 
 
-delta_zresult_count, delta_path_count = 1, 1
-while not (delta_zresult_count == 0 and delta_path_count == 0):
+delta_zresult_empty, delta_path_empty = False, False
+while not (delta_zresult_empty and delta_path_empty):
     # [32] purge new_$Result;
     con.execute("DELETE FROM new_zresult;")
     # [33] purge new_Path;
@@ -136,9 +134,9 @@ while not (delta_zresult_count == 0 and delta_path_count == 0):
     # [52] delta_Path := new_Path
     swap("delta_path", "new_path", con=con)
 
-    delta_zresult_count = count_tuples("delta_zresult", con=con)
-    delta_path_count = count_tuples("delta_path", con=con)
-    print(f"loop - delta_zresult_count: {delta_zresult_count}, delta_path_count: {delta_path_count},")
+    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
+    delta_path_empty = table_is_empty("delta_path", con=con)
+    print(f"empty_deltas: {delta_zresult_empty}, {delta_path_empty}")
 
 
 

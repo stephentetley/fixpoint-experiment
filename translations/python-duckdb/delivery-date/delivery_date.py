@@ -10,14 +10,10 @@ def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
 
-def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
-    ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
-    if ans1 is None:
-        return 0
-    else:
-        return ans1[0]
-    
-
+def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
+    ans1 = con.execute(query).fetchone()
+    return (ans1[0] == 0)
 
 con = duckdb.connect()
 
@@ -83,8 +79,8 @@ con.execute(query)
 con.execute("INSERT INTO delta_ready_date (part, days) SELECT part, days FROM ready_date;")
 
 
-delta_ready_date_count = 1
-while not (delta_ready_date_count == 0):
+delta_ready_date_empty = False
+while not (delta_ready_date_empty):
     # purge new_ready_date
     con.execute("DELETE FROM new_ready_date;")
 
@@ -126,10 +122,9 @@ while not (delta_ready_date_count == 0):
     con.execute("INSERT INTO ready_date (part, days) SELECT part, days FROM new_ready_date ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
     swap("new_ready_date", "delta_ready_date", con=con)
 
-    delta_ready_date_count = count_tuples("delta_ready_date", con=con)
-    print(f"loop - delta_ready_date_count: {delta_ready_date_count}")
-    if delta_ready_date_count <= 0:
-        break
+    delta_ready_date_empty = table_is_empty("delta_ready_date", con=con)
+    print(f"empty_deltas: {delta_ready_date_empty}")
+
 
 # calc zresult...
 query = """
@@ -144,7 +139,8 @@ con.execute(query)
 con.execute("INSERT INTO delta_zresult (part, days) SELECT part, days FROM zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
 
 
-while True:
+delta_zresult_empty = False
+while not (delta_zresult_empty):
 
     # purge new_$Result;
     con.execute("DELETE FROM new_zresult;")
@@ -168,10 +164,9 @@ while True:
     con.execute("INSERT INTO zresult (part, days) SELECT part, days FROM new_zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
     swap("new_zresult", "delta_zresult", con=con)
 
-    delta_zresult_count = count_tuples("delta_zresult", con=con)
-    print(f"loop - count: {delta_zresult_count}")
-    if delta_zresult_count <= 0:
-        break
+    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
+    print(f"empty_deltas: {delta_zresult_empty}")
+
 
 
 print("zresult")

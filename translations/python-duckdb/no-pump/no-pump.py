@@ -12,13 +12,10 @@ def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
-def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
-    ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
-    if ans1 is None:
-        return 0
-    else:
-        return ans1[0]
-    
+def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
+    ans1 = con.execute(query).fetchone()
+    return (ans1[0] == 0)
 
 con = duckdb.connect()
 
@@ -62,7 +59,8 @@ con.execute(project_into_HasPump1)
 #  merge HasPump into delta_HasPump;
 con.execute("INSERT INTO delta_has_pump (floc) SELECT floc FROM has_pump ON CONFLICT DO NOTHING;")
 
-while True:
+delta_has_pump_empty = False
+while not (delta_has_pump_empty):
     # purge new_HasPump;
     con.execute("DELETE FROM new_has_pump;")
 
@@ -73,10 +71,8 @@ while True:
     swap("new_has_pump", "delta_has_pump", con=con)
     
 
-    delta_has_pump_count = count_tuples("delta_has_pump", con=con)
-    print(f"loop - delta_has_pump_count: {delta_has_pump_count},")
-    if delta_has_pump_count <= 0:
-        break
+    delta_has_pump_empty = table_is_empty("delta_has_pump", con=con)
+    print(f"empty_deltas: {delta_has_pump_empty}")
 
 # $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
 project_into_zresult1 = """
@@ -104,7 +100,8 @@ con.execute("INSERT INTO delta_zresult (floc) SELECT floc FROM zresult ON CONFLI
 # merge NoPump into delta_NoPump;
 con.execute("INSERT INTO delta_no_pump (floc) SELECT floc FROM no_pump ON CONFLICT DO NOTHING;")
 
-while True:
+delta_zresult_empty, delta_no_pump_empty = False, False
+while not (delta_zresult_empty and delta_no_pump_empty):
     # purge new_$Result;
     con.execute("DELETE FROM new_zresult;")
 
@@ -135,11 +132,9 @@ while True:
     swap("new_no_pump", "delta_no_pump", con=con)
     
 
-    delta_zresult_count = count_tuples("delta_zresult", con=con)
-    delta_no_pump_count = count_tuples("delta_no_pump", con=con)
-    print(f"loop - delta_zresult_count: {delta_zresult_count}, delta_no_pump_count: {delta_no_pump_count}")
-    if delta_zresult_count <= 0 or delta_no_pump_count <= 0:
-        break
+    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
+    delta_no_pump_empty = table_is_empty("delta_no_pump", con=con)
+    print(f"empty_deltas: {delta_zresult_empty}, {delta_no_pump_empty}")
 
 print("zresult")
 con.table("zresult").show()

@@ -92,7 +92,6 @@ while not (delta_zresult_empty and delta_path_empty):
 
     delta_zresult_empty = delta_zresult.is_empty()
     delta_path_empty = delta_path.is_empty()
-
     print(f"empty_deltas: {delta_zresult_empty} {delta_path_empty}")
 
     

@@ -9,13 +9,10 @@ def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
-
-def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
-    ans1 = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
-    if ans1 is None:
-        return 0
-    else:
-        return ans1[0]
+def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
+    ans1 = con.execute(query).fetchone()
+    return (ans1[0] == 0)
 
 
 con = duckdb.connect()
@@ -72,8 +69,8 @@ con.execute("INSERT INTO delta_zresult (friend, newfriend) SELECT friend, newfri
 # merge Suggestion into delta_Suggestion;
 con.execute("INSERT INTO delta_suggestion (friend, newfriend) SELECT friend, newfriend FROM suggestion ON CONFLICT DO NOTHING;")
 
-
-while True:
+delta_zresult_empty, delta_suggestion_empty = False, False
+while not (delta_zresult_empty and delta_suggestion_empty):
     # purge new_$Result;
     con.execute("DELETE FROM new_zresult;")
     # purge new_Suggestion;
@@ -102,11 +99,10 @@ while True:
     swap("new_zresult", "delta_zresult", con=con)
     swap("new_suggestion", "delta_suggestion", con=con)
 
-    delta_zresult_count = count_tuples("delta_zresult", con=con)
-    delta_suggestion_count = count_tuples("delta_suggestion", con=con)
-    print(f"loop - delta_zresult_count: {delta_zresult_count}, delta_suggestion_count: {delta_suggestion_count}")
-    if delta_zresult_count <= 0 and delta_suggestion_count <= 0:
-        break
+    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
+    delta_suggestion_empty = table_is_empty("delta_suggestion", con=con)
+    print(f"empty_deltas: {delta_zresult_empty}, {delta_suggestion_empty}")
+
 
 
 print("zresult")
