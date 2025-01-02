@@ -1,4 +1,3 @@
-import os
 import duckdb
 
 # merge - src and dest columns must have the same names
@@ -8,7 +7,7 @@ def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
         INSERT INTO {dest}({columns})
         SELECT {columns} 
         FROM {src}
-        ANTI JOIN {dest} USING({columns})
+        ANTI JOIN {dest} USING({columns});
     """
     con.execute(query)
 
@@ -16,11 +15,17 @@ def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
     con.execute(query)
 
-def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str,) -> None:
-    table_swap = f"{table1}_swap"
-    con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
-    con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
-    con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
+def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
+    query = f"DELETE FROM {left_table};"
+    con.execute(query)
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {left_table}({columns})
+        SELECT {columns} 
+        FROM {right_table};
+    """
+    con.execute(query)
+
 
 
 def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
@@ -138,7 +143,7 @@ while not (delta_ready_date_empty):
     merge_into(con, src='new_ready_date', dest='ready_date', cols=['part', 'days'])
     
     # [55] delta_ReadyDate := new_ReadyDate
-    swap(con, "new_ready_date", "delta_ready_date")
+    bind_table(con, left_table="delta_ready_date", right_table="new_ready_date", cols=['part', 'days'])
 
     delta_ready_date_empty = table_is_empty(con, "delta_ready_date")
     print(f"empty_deltas: {delta_ready_date_empty}")
@@ -184,7 +189,8 @@ while not (delta_zresult_empty):
     merge_into(con, src='new_zresult', dest='zresult', cols=['part', 'days'])
     
     # [71] delta_$Result := new_$Result
-    swap(con, "new_zresult", "delta_zresult")
+    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['part', 'days'])
+    
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")
     print(f"empty_deltas: {delta_zresult_empty}")

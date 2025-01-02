@@ -19,11 +19,16 @@ def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
     con.execute(query)
 
-def swap_tables(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
-    table_swap = f"{table1}_swap"
-    con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
-    con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
-    con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
+def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
+    query = f"DELETE FROM {left_table};"
+    con.execute(query)
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {left_table}({columns})
+        SELECT {columns} 
+        FROM {right_table};
+    """
+    con.execute(query)
 
 def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
@@ -35,12 +40,12 @@ con = duckdb.connect()
 
 table_ddl = """
     CREATE OR REPLACE TABLE edge (edge_from INTEGER, edge_to INTEGER);
-    CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
-    CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
-    CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
-    CREATE OR REPLACE TABLE zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
-    CREATE OR REPLACE TABLE delta_zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
-    CREATE OR REPLACE TABLE new_zresult (path_from INTEGER, path_to INTEGER, PRIMARY KEY(path_from, path_to));
+    CREATE OR REPLACE TABLE path (path_from INTEGER, path_to INTEGER);
+    CREATE OR REPLACE TABLE delta_path (path_from INTEGER, path_to INTEGER);
+    CREATE OR REPLACE TABLE new_path (path_from INTEGER, path_to INTEGER);
+    CREATE OR REPLACE TABLE zresult (path_from INTEGER, path_to INTEGER);
+    CREATE OR REPLACE TABLE delta_zresult (path_from INTEGER, path_to INTEGER);
+    CREATE OR REPLACE TABLE new_zresult (path_from INTEGER, path_to INTEGER);
 """
 con.execute(table_ddl)
 
@@ -56,8 +61,7 @@ query = """
     SELECT
         t0.path_from AS path_from,
         t0.path_to AS path_to,
-    FROM path t0
-    ON CONFLICT DO NOTHING;
+    FROM path t0;
 """
 con.execute(query)
 
@@ -67,8 +71,7 @@ query = """
     SELECT
         t0.edge_from AS path_from,
         t0.edge_to AS path_to,
-    FROM edge t0
-    ON CONFLICT DO NOTHING;
+    FROM edge t0;
 """
 con.execute(query)
 
@@ -79,59 +82,59 @@ query = """
         t0.path_from AS path_from,
         t1.edge_to AS path_to,
     FROM path t0
-    JOIN edge t1 ON t1.edge_from == t0.path_to
-    ON CONFLICT DO NOTHING;
+    JOIN edge t1 ON t1.edge_from == t0.path_to;
 """
 con.execute(query)
 
-# merge $Result into delta_$Result;
+# [25] merge $Result into delta_$Result;
 merge_into(con, src='zresult', dest='delta_zresult', cols=["path_from", "path_to"])
 
-# merge Path into delta_Path;
+# [26] merge Path into delta_Path;
 merge_into(con, src='path', dest='delta_path', cols=["path_from", "path_to"])
 
 
 delta_zresult_empty, delta_path_empty = False, False
 while not (delta_zresult_empty and delta_path_empty):
-    # purge new_$Result;
+    # [29] purge new_$Result;
     purge_table(con, "new_zresult")
-    # purge new_Path;
+    # [29] purge new_Path;
     purge_table(con, "new_path")
 
-    # $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
+    # [30] $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
     query1 = """
         INSERT INTO new_zresult(path_from, path_to)
         SELECT 
             t0.path_from AS path_from,
             t0.path_to AS path_to,
         FROM delta_path t0
-        WHERE NOT EXISTS (SELECT * FROM zresult s WHERE s.path_from = t0.path_from AND s.path_to = t0.path_to)
-        ON CONFLICT DO NOTHING;
+        WHERE NOT EXISTS (SELECT * FROM zresult s WHERE s.path_from = t0.path_from AND s.path_to = t0.path_to);
     """
     con.execute(query1)
 
-    # Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
-    # Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
+    # [36] Path(VarSym(x), VarSym(y)) :- Edge(VarSym(x), VarSym(y)).;
+    # [37] Path(VarSym(x), VarSym(z)) :- Path(VarSym(x), VarSym(y)), Edge(VarSym(y), VarSym(z)).;
     query1 = """
         INSERT INTO new_path(path_from, path_to)
         SELECT 
             t0.path_from AS path_from,
             t1.edge_to AS path_to,
         FROM delta_path t0
-        JOIN edge t1 ON t1.edge_from = t0.path_to AND NOT EXISTS (SELECT * FROM path s WHERE s.path_from = t0.path_from AND s.path_to = t1.edge_to)
-        ON CONFLICT DO NOTHING;
+        JOIN edge t1 ON t1.edge_from = t0.path_to AND NOT EXISTS (SELECT * FROM path s WHERE s.path_from = t0.path_from AND s.path_to = t1.edge_to);
     """
     con.execute(query1)
 
-    # merge new_$Result into $Result;
+    # [45] merge new_$Result into $Result;
     merge_into(con, src='new_zresult', dest='zresult', cols=["path_from", "path_to"])
 
-    # merge new_Path into Path;
+    # [46] merge new_Path into Path;
     merge_into(con, src='new_path', dest='path', cols=["path_from", "path_to"])
 
-    
-    swap_tables(con, "delta_zresult",  "new_zresult");
-    swap_tables(con, "delta_path", "new_path")
+    # [47] delta_$Result := new_$Result;
+    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=["path_from", "path_to"])
+
+    # [48] delta_Path := new_Path
+    bind_table(con, left_table="delta_path", right_table="new_path", cols=["path_from", "path_to"])
+
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")
     delta_path_empty = table_is_empty(con, "delta_path")
