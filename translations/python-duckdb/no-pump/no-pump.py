@@ -3,7 +3,11 @@ import os
 import duckdb
 
 
-# merge and purge are no clearer than using SQL directly
+# merge is no clearer than using SQL directly
+
+def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
+    query = f"DELETE FROM {table};"
+    con.execute(query)
 
 
 def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
@@ -62,7 +66,7 @@ con.execute("INSERT INTO delta_has_pump (floc) SELECT floc FROM has_pump ON CONF
 delta_has_pump_empty = False
 while not (delta_has_pump_empty):
     # purge new_HasPump;
-    con.execute("DELETE FROM new_has_pump;")
+    purge_table(con, "new_has_pump")
 
     # merge new_HasPump into HasPump;
     con.execute("INSERT INTO has_pump (floc) SELECT floc FROM new_has_pump ON CONFLICT DO NOTHING;")
@@ -103,10 +107,10 @@ con.execute("INSERT INTO delta_no_pump (floc) SELECT floc FROM no_pump ON CONFLI
 delta_zresult_empty, delta_no_pump_empty = False, False
 while not (delta_zresult_empty and delta_no_pump_empty):
     # purge new_$Result;
-    con.execute("DELETE FROM new_zresult;")
+    purge_table(con, "new_zresult")
 
     # purge new_NoPump;
-    con.execute("DELETE FROM new_no_pump;")
+    purge_table(con, "new_no_pump")
 
     # $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
     project_into_new_zresult1 = """

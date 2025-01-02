@@ -1,7 +1,11 @@
 import os
 import duckdb
 
-# merge and purge are no clearer than using SQL directly
+# merge is no clearer than using SQL directly
+
+def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
+    query = f"DELETE FROM {table};"
+    con.execute(query)
 
 def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
     table_swap = f"{table1}_swap"
@@ -95,9 +99,9 @@ con.execute("INSERT INTO delta_path (source, destination) SELECT source, destina
 delta_zresult_empty, delta_path_empty = False, False
 while not (delta_zresult_empty and delta_path_empty):
     # [32] purge new_$Result;
-    con.execute("DELETE FROM new_zresult;")
+    purge_table(con, "new_zresult")
     # [33] purge new_Path;
-    con.execute("DELETE FROM new_path;")
+    purge_table(con, "new_path")
 
     # [34] $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
     query = """

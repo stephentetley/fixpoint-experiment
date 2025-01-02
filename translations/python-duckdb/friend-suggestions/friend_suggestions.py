@@ -1,7 +1,11 @@
 import os
 import duckdb
 
-# merge and purge are no clearer than using SQL directly
+# merge is no clearer than using SQL directly
+
+def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
+    query = f"DELETE FROM {table};"
+    con.execute(query)
 
 def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
     table_swap = f"{table1}_swap"
@@ -72,9 +76,9 @@ con.execute("INSERT INTO delta_suggestion (friend, newfriend) SELECT friend, new
 delta_zresult_empty, delta_suggestion_empty = False, False
 while not (delta_zresult_empty and delta_suggestion_empty):
     # purge new_$Result;
-    con.execute("DELETE FROM new_zresult;")
+    purge_table(con, "new_zresult")
     # purge new_Suggestion;
-    con.execute("DELETE FROM new_suggestion;")
+    purge_table(con, "new_suggestion")
 
     # Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
     # $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;

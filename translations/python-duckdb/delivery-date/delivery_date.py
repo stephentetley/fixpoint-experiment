@@ -1,7 +1,11 @@
 import os
 import duckdb
 
-# merge and purge are no clearer than using SQL directly
+# merge is no clearer than using SQL directly
+
+def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
+    query = f"DELETE FROM {table};"
+    con.execute(query)
 
 def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str,) -> None:
     table_swap = f"{table1}_swap"
@@ -82,7 +86,7 @@ con.execute("INSERT INTO delta_ready_date (part, days) SELECT part, days FROM re
 delta_ready_date_empty = False
 while not (delta_ready_date_empty):
     # purge new_ready_date
-    con.execute("DELETE FROM new_ready_date;")
+    purge_table(con, "new_ready_date")
 
     # ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
     query = """
@@ -143,7 +147,7 @@ delta_zresult_empty = False
 while not (delta_zresult_empty):
 
     # purge new_$Result;
-    con.execute("DELETE FROM new_zresult;")
+    purge_table(con, "new_zresult")
 
 
     query = """

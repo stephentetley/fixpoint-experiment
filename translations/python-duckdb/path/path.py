@@ -5,10 +5,13 @@ import os
 import duckdb
 
 
-# merge and purge are no clearer than using SQL directly
+# merge is no clearer than using SQL directly
 
+def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
+    query = f"DELETE FROM {table};"
+    con.execute(query)
 
-def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
+def swap_tables(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
     table_swap = f"{table1}_swap"
     con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
@@ -82,9 +85,9 @@ con.execute("INSERT INTO delta_path (path_from, path_to) SELECT path_from, path_
 delta_zresult_empty, delta_path_empty = False, False
 while not (delta_zresult_empty and delta_path_empty):
     # purge new_$Result;
-    con.execute("DELETE FROM new_zresult;")
+    purge_table(con, "new_zresult")
     # purge new_Path;
-    con.execute("DELETE FROM new_path;")
+    purge_table(con, "new_path")
 
     # $Result(VarSym(x1), VarSym(x2)) :- Path(VarSym(x1), VarSym(x2)).;
     query1 = """
@@ -116,8 +119,8 @@ while not (delta_zresult_empty and delta_path_empty):
     # merge new_Path into Path;
     con.execute("INSERT INTO path (path_from, path_to) SELECT path_from, path_to FROM new_path ON CONFLICT DO NOTHING;")
     
-    swap(con, "delta_zresult",  "new_zresult");
-    swap(con, "delta_path", "new_path")
+    swap_tables(con, "delta_zresult",  "new_zresult");
+    swap_tables(con, "delta_path", "new_path")
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")
     delta_path_empty = table_is_empty(con, "delta_path")
