@@ -5,7 +5,16 @@ import os
 import duckdb
 
 
-# merge is no clearer than using SQL directly
+# merge - src and ddest columns must have the same names
+def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO zresult({columns})
+        SELECT {columns} 
+        FROM {src}
+        ANTI JOIN {dest} USING({columns})
+    """
+    con.execute(query)
 
 def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
@@ -115,9 +124,11 @@ while not (delta_zresult_empty and delta_path_empty):
     con.execute(query1)
 
     # merge new_$Result into $Result;
-    con.execute("INSERT INTO zresult (path_from, path_to) SELECT path_from, path_to FROM new_zresult ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_zresult', dest='zresult', cols=["path_from", "path_to"])
+
     # merge new_Path into Path;
-    con.execute("INSERT INTO path (path_from, path_to) SELECT path_from, path_to FROM new_path ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_path', dest='path', cols=["path_from", "path_to"])
+
     
     swap_tables(con, "delta_zresult",  "new_zresult");
     swap_tables(con, "delta_path", "new_path")
