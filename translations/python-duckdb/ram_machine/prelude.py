@@ -1,6 +1,7 @@
 import duckdb
 
 # merge - src and dest columns must have the same names
+# Maybe we need lattice merge_into that updates lattice columns...
 def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
     columns = ", ".join(cols)
     query = f"""
@@ -10,6 +11,17 @@ def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
         ANTI JOIN {dest} USING({columns})
     """
     con.execute(query)
+
+def lattice_merge_into(con, *, src: str, dest:str, cols: list[str], lattice_col: str) -> None:
+    all_columns = ", ".join(cols + [lattice_col])
+    query = f"""
+        INSERT INTO {dest}({all_columns})
+        SELECT {all_columns} 
+        FROM {src}
+        ON CONFLICT DO UPDATE SET {lattice_col} = EXCLUDED.{lattice_col};
+    """
+    con.execute(query)
+
 
 def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"

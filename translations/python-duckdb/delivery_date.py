@@ -17,7 +17,7 @@ table_ddl = """
     CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);
     CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER);
     CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER);
-    CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER, PRIMARY KEY (part));
     CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER);
     CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER);
     CREATE OR REPLACE TABLE zresult (part VARCHAR, days INTEGER);
@@ -78,9 +78,8 @@ while not (delta_ready_date_empty):
     # [37] urge new_ready_date
     ram.purge_table(con, "new_ready_date")
 
-    print("[37] ready_date")
-    con.table("ready_date").show()
-
+    # print("[37] ready_date")
+    # con.table("ready_date").show()
 
     # [38] ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
     query = """
@@ -92,8 +91,8 @@ while not (delta_ready_date_empty):
         ANTI JOIN ready_date t1 ON (t0.component = t1.part AND t0.days = t1.days)
     """
     con.execute(query)
-    print("[38] new_ready_date")
-    con.table("new_ready_date").show()
+    # print("[38] new_ready_date")
+    # con.table("new_ready_date").show()
 
     # [44] ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
     query = """
@@ -114,11 +113,12 @@ while not (delta_ready_date_empty):
         ANTI JOIN ready_date USING (part, days)
     """
     con.execute(query)
-    print("[44] new_ready_date")
-    con.table("new_ready_date").show()
+    # print("[44] new_ready_date")
+    # con.table("new_ready_date").show()
 
     # [54] merge new_ReadyDate into ReadyDate;
-    ram.merge_into(con, src='new_ready_date', dest='ready_date', cols=['part', 'days'])
+    # `ready_date`` is a littice table
+    ram.lattice_merge_into(con, src='new_ready_date', dest='ready_date', cols=['part'], lattice_col='days')
     
     # [55] delta_ReadyDate := new_ReadyDate
     ram.bind_table(con, left_table="delta_ready_date", right_table="new_ready_date", cols=['part', 'days'])
@@ -173,5 +173,4 @@ while not (delta_zresult_empty):
 print("zresult")
 con.table("zresult").show()
 
-print('^ Currently has an error - zresult should have single entry for each part')
 con.close()
