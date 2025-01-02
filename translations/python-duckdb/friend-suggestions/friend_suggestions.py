@@ -1,7 +1,15 @@
-import os
 import duckdb
 
-# merge is no clearer than using SQL directly
+# merge - src and dest columns must have the same names
+def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {dest}({columns})
+        SELECT {columns} 
+        FROM {src}
+        ANTI JOIN {dest} USING({columns})
+    """
+    con.execute(query)
 
 def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
@@ -69,9 +77,10 @@ query = """
 con.execute(query)
 
 # merge $Result into delta_$Result;
-con.execute("INSERT INTO delta_zresult (friend, newfriend) SELECT friend, newfriend FROM zresult ON CONFLICT DO NOTHING;")
+merge_into(con, src='zresult', dest='delta_zresult', cols=['friend', 'newfriend'])
+
 # merge Suggestion into delta_Suggestion;
-con.execute("INSERT INTO delta_suggestion (friend, newfriend) SELECT friend, newfriend FROM suggestion ON CONFLICT DO NOTHING;")
+merge_into(con, src='suggestion', dest='delta_suggestion', cols=['friend', 'newfriend'])
 
 delta_zresult_empty, delta_suggestion_empty = False, False
 while not (delta_zresult_empty and delta_suggestion_empty):
@@ -95,10 +104,10 @@ while not (delta_zresult_empty and delta_suggestion_empty):
 
 
     # merge new_$Result into $Result;
-    con.execute("INSERT INTO zresult (friend, newfriend) SELECT friend, newfriend FROM new_zresult ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_zresult', dest='zresult', cols=['friend', 'newfriend'])
 
     # merge new_Suggestion into Suggestion;
-    con.execute("INSERT INTO suggestion (friend, newfriend) SELECT friend, newfriend FROM new_suggestion ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_suggestion', dest='suggestion', cols=['friend', 'newfriend'])
     
     swap(con, "new_zresult", "delta_zresult")
     swap(con, "new_suggestion", "delta_suggestion")

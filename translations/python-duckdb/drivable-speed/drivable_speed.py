@@ -1,7 +1,16 @@
-import os
+
 import duckdb
 
-# merge is no clearer than using SQL directly
+# merge - src and dest columns must have the same names
+def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {dest}({columns})
+        SELECT {columns} 
+        FROM {src}
+        ANTI JOIN {dest} USING({columns})
+    """
+    con.execute(query)
 
 def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
@@ -91,9 +100,10 @@ query = """
 con.execute(query)
 
 # [29] merge $Result into delta_$Result;
-con.execute("INSERT INTO delta_zresult (result) SELECT result FROM zresult ON CONFLICT DO NOTHING;")
+merge_into(con, src='zresult', dest='delta_zresult', cols=['result'])
+
 # [30] merge Path into delta_Path;
-con.execute("INSERT INTO delta_path (source, destination) SELECT source, destination FROM path ON CONFLICT DO NOTHING;")
+merge_into(con, src='path', dest='delta_path', cols=['source', 'destination'])
 
 
 delta_zresult_empty, delta_path_empty = False, False
@@ -130,9 +140,12 @@ while not (delta_zresult_empty and delta_path_empty):
     con.execute(query)
 
     # [49] merge new_$Result into $Result;
-    con.execute("INSERT INTO zresult (result) SELECT result FROM new_zresult ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_zresult', dest='zresult', cols=['result'])
+
     # [50] merge new_Path into Path;
-    con.execute("INSERT INTO path (source, destination) SELECT source, destination FROM new_path ON CONFLICT DO NOTHING;")
+    merge_into(con, src='new_path', dest='path', cols=['source', 'destination'])
+    
+
     # [51] delta_$Result := new_$Result;
     swap(con, "delta_zresult", "new_zresult")
     # [52] delta_Path := new_Path

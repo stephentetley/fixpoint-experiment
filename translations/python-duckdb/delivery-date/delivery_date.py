@@ -1,7 +1,16 @@
 import os
 import duckdb
 
-# merge is no clearer than using SQL directly
+# merge - src and dest columns must have the same names
+def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {dest}({columns})
+        SELECT {columns} 
+        FROM {src}
+        ANTI JOIN {dest} USING({columns})
+    """
+    con.execute(query)
 
 def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
@@ -26,14 +35,14 @@ con = duckdb.connect()
 # ?ReadyDate' => new_ready_date
 table_ddl = """
     CREATE OR REPLACE TABLE part_depends (part VARCHAR, component VARCHAR);
-    CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER, PRIMARY KEY(part));
-    CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER, PRIMARY KEY(component));
-    CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));
-    CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));
-    CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER, PRIMARY KEY(part));
-    CREATE OR REPLACE TABLE zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));
-    CREATE OR REPLACE TABLE delta_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));
-    CREATE OR REPLACE TABLE new_zresult (part VARCHAR, days INTEGER, PRIMARY KEY(part));
+    CREATE OR REPLACE TABLE assembly_time (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE delivery_date (component VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE ready_date (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE delta_ready_date (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE new_ready_date (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE zresult (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE delta_zresult (part VARCHAR, days INTEGER);
+    CREATE OR REPLACE TABLE new_zresult (part VARCHAR, days INTEGER);
 """
 con.execute(table_ddl)
 
@@ -55,7 +64,7 @@ data_load = """
 """
 con.execute(data_load)
 
-# ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
+# [23] ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
 query = """
     INSERT INTO ready_date(part, days)
     SELECT 
@@ -65,7 +74,7 @@ query = """
 """
 con.execute(query)
 
-# ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
+# [27] ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
 query = """
     INSERT INTO ready_date(part, days)
     SELECT 
@@ -80,15 +89,17 @@ query = """
 """
 con.execute(query)
 
-con.execute("INSERT INTO delta_ready_date (part, days) SELECT part, days FROM ready_date;")
+# [35] merge ReadyDate into delta_ReadyDate;
+merge_into(con, src='ready_date', dest='delta_ready_date', cols=['part', 'days'])
+
 
 
 delta_ready_date_empty = False
 while not (delta_ready_date_empty):
-    # purge new_ready_date
+    # [37] urge new_ready_date
     purge_table(con, "new_ready_date")
 
-    # ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
+    # [38] ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
     query = """
         INSERT INTO new_ready_date(part, days)
         SELECT 
@@ -103,6 +114,7 @@ while not (delta_ready_date_empty):
     """
     con.execute(query)
 
+    # [44] ReadyDate(VarSym(part); <clo>(VarSym(componentDate), VarSym(assemblyTime))) :- PartDepends(VarSym(part), VarSym(component)), AssemblyTime(VarSym(part), VarSym(assemblyTime)), ReadyDate(VarSym(component); VarSym(componentDate)).;
     query = """
         INSERT INTO new_ready_date(part, days)
         SELECT 
@@ -122,15 +134,17 @@ while not (delta_ready_date_empty):
     """
     con.execute(query)
 
-    # merge new_ReadyDate into ReadyDate;
-    con.execute("INSERT INTO ready_date (part, days) SELECT part, days FROM new_ready_date ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
+    # [54] merge new_ReadyDate into ReadyDate;
+    merge_into(con, src='new_ready_date', dest='ready_date', cols=['part', 'days'])
+    
+    # [55] delta_ReadyDate := new_ReadyDate
     swap(con, "new_ready_date", "delta_ready_date")
 
     delta_ready_date_empty = table_is_empty(con, "delta_ready_date")
     print(f"empty_deltas: {delta_ready_date_empty}")
 
 
-# calc zresult...
+# [57] $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
 query = """
     INSERT INTO zresult(part, days)
     SELECT 
@@ -139,17 +153,19 @@ query = """
     FROM ready_date;
 """
 con.execute(query)
-# merge $Result into delta_$Result;
-con.execute("INSERT INTO delta_zresult (part, days) SELECT part, days FROM zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
+
+# [61] merge $Result into delta_$Result;
+merge_into(con, src='zresult', dest='delta_zresult', cols=['part', 'days'])
+
 
 
 delta_zresult_empty = False
 while not (delta_zresult_empty):
 
-    # purge new_$Result;
+    # [63] purge new_$Result;
     purge_table(con, "new_zresult")
 
-
+    # [64] $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
     query = """
         INSERT INTO new_zresult(part, days)
         SELECT 
@@ -164,8 +180,10 @@ while not (delta_zresult_empty):
     """
     con.execute(query)
 
-    # merge new_$Result into $Result;
-    con.execute("INSERT INTO zresult (part, days) SELECT part, days FROM new_zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
+    # [70] merge new_$Result into $Result;
+    merge_into(con, src='new_zresult', dest='zresult', cols=['part', 'days'])
+    
+    # [71] delta_$Result := new_$Result
     swap(con, "new_zresult", "delta_zresult")
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")
@@ -176,5 +194,5 @@ while not (delta_zresult_empty):
 print("zresult")
 con.table("zresult").show()
 
-
+print('^ Currently has an error - zresult should have single entry for each part')
 con.close()

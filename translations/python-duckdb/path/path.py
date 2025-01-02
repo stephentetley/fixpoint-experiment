@@ -4,7 +4,7 @@
 import duckdb
 
 
-# merge - src and ddest columns must have the same names
+# merge - src and dest columns must have the same names
 def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
     columns = ", ".join(cols)
     query = f"""
