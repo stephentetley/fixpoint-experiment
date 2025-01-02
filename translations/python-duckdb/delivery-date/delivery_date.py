@@ -18,11 +18,8 @@ def count_tuples(table: str, *, con: duckdb.DuckDBPyConnection) -> int:
         return ans1[0]
     
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-duckdb_path = os.path.normpath(os.path.join(dir_path, 'data-delivery-date.duckdb'))
 
-
-con = duckdb.connect(database=duckdb_path, read_only=False)
+con = duckdb.connect()
 
 # In RAM program:
 # ?ReadyDate  => delta_ready_date
