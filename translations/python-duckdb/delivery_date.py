@@ -55,10 +55,9 @@ query = """
         t0.part AS part,
         max(t1.days + t2.days) AS days,
     FROM 
-        part_depends t0,
-        assembly_time t1,
-        ready_date t2,
-    WHERE t1.part = t0.part AND t2.part = t0.component
+        part_depends t0
+    JOIN assembly_time t1 ON t1.part = t0.part
+    JOIN ready_date t2 ON t2.part = t0.component
     GROUP BY t0.part
 """
 con.execute(query)
@@ -80,11 +79,7 @@ while not (delta_ready_date_empty):
             t0.component AS part,
             t0.days AS days,
         FROM delivery_date t0
-        EXCEPT
-        SELECT 
-            t1.part AS part,
-            t1.days AS days,
-        FROM ready_date t1
+        ANTI JOIN ready_date t1 ON (t0.component = t1.part AND t0.days = t1.days)
     """
     con.execute(query)
 
@@ -146,11 +141,7 @@ while not (delta_zresult_empty):
             t0.part AS part,
             t0.days AS days,
         FROM ready_date t0
-        EXCEPT
-        SELECT 
-            t1.part AS part,
-            t1.days AS days,
-        FROM zresult t1
+        ANTI JOIN zresult t1 ON (t0.part = t1.part AND t0.days = t1.days);
     """
     con.execute(query)
 
