@@ -6,13 +6,13 @@ import ram_machine.prelude as ram
 con = duckdb.connect()
 
 table_ddl = """
-    CREATE OR REPLACE TABLE friend (me VARCHAR, friend VARCHAR, PRIMARY KEY(me, friend));
-    CREATE OR REPLACE TABLE suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
-    CREATE OR REPLACE TABLE delta_suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
-    CREATE OR REPLACE TABLE new_suggestion (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
-    CREATE OR REPLACE TABLE zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
-    CREATE OR REPLACE TABLE delta_zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
-    CREATE OR REPLACE TABLE new_zresult (friend VARCHAR, newfriend VARCHAR, PRIMARY KEY(friend, newfriend));
+    CREATE OR REPLACE TABLE friend (me VARCHAR, friend VARCHAR);
+    CREATE OR REPLACE TABLE suggestion (friend VARCHAR, newfriend VARCHAR);
+    CREATE OR REPLACE TABLE delta_suggestion (friend VARCHAR, newfriend VARCHAR);
+    CREATE OR REPLACE TABLE new_suggestion (friend VARCHAR, newfriend VARCHAR);
+    CREATE OR REPLACE TABLE zresult (friend VARCHAR, newfriend VARCHAR);
+    CREATE OR REPLACE TABLE delta_zresult (friend VARCHAR, newfriend VARCHAR);
+    CREATE OR REPLACE TABLE new_zresult (friend VARCHAR, newfriend VARCHAR);
     DROP MACRO IF EXISTS pred1;
     CREATE MACRO pred1(f1, f2, f3) AS f1 != f2 AND f2 != f3 AND f1 != f3;
 """

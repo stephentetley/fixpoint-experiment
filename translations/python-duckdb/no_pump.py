@@ -8,15 +8,15 @@ table_ddl = """
     CREATE OR REPLACE TABLE system (floc VARCHAR, ty VARCHAR, parent VARCHAR);
     CREATE OR REPLACE TABLE sub_system (floc VARCHAR, ty VARCHAR, parent VARCHAR);
     CREATE OR REPLACE TABLE pump (floc VARCHAR, name VARCHAR);
-    CREATE OR REPLACE TABLE has_pump (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE delta_has_pump (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE new_has_pump (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE no_pump (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE delta_no_pump (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE new_no_pump (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE zresult (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE delta_zresult (floc VARCHAR, PRIMARY KEY(floc));
-    CREATE OR REPLACE TABLE new_zresult (floc VARCHAR, PRIMARY KEY(floc));
+    CREATE OR REPLACE TABLE has_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE delta_has_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE new_has_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE no_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE delta_no_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE new_no_pump (floc VARCHAR);
+    CREATE OR REPLACE TABLE zresult (floc VARCHAR);
+    CREATE OR REPLACE TABLE delta_zresult (floc VARCHAR,);
+    CREATE OR REPLACE TABLE new_zresult (floc VARCHAR);
 """
 
 con.execute(table_ddl)

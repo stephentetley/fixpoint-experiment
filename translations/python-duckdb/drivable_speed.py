@@ -6,7 +6,7 @@ import ram_machine.prelude as ram
 con = duckdb.connect()
 
 # param... 45 is drivable, 55 isn't
-drivable_speed = 45
+drivable_speed = 55
 
 print(f"Is drivable at {drivable_speed}? ... check result table has an entry:")
 
@@ -20,12 +20,12 @@ table_ddl = f"""
     CREATE MACRO pred1(mph) AS (mph >= arg_speed());
 
     CREATE OR REPLACE TABLE road (source VARCHAR, max_speed INTEGER, destination VARCHAR);
-    CREATE OR REPLACE TABLE path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));
-    CREATE OR REPLACE TABLE delta_path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));
-    CREATE OR REPLACE TABLE new_path (source VARCHAR, destination VARCHAR, PRIMARY KEY(source, destination));
-    CREATE OR REPLACE TABLE zresult (result unit, PRIMARY KEY(result));
-    CREATE OR REPLACE TABLE delta_zresult (result unit, PRIMARY KEY(result));
-    CREATE OR REPLACE TABLE new_zresult (result unit, PRIMARY KEY(result));
+    CREATE OR REPLACE TABLE path (source VARCHAR, destination VARCHAR);
+    CREATE OR REPLACE TABLE delta_path (source VARCHAR, destination VARCHAR);
+    CREATE OR REPLACE TABLE new_path (source VARCHAR, destination VARCHAR);
+    CREATE OR REPLACE TABLE zresult (result unit);
+    CREATE OR REPLACE TABLE delta_zresult (result unit);
+    CREATE OR REPLACE TABLE new_zresult (result unit);
 """
 con.execute(table_ddl)
 
@@ -105,8 +105,7 @@ while not (delta_zresult_empty and delta_path_empty):
             t1.destination AS destination,
         FROM delta_path t0
         JOIN road t1 ON t1.SOURCE = t0.destination AND pred1(t1.max_speed) 
-        ANTI JOIN path t2 ON (t2.source = t0.source AND t2.destination = t1.destination)
-        ON CONFLICT DO NOTHING;
+        ANTI JOIN path t2 ON (t2.source = t0.source AND t2.destination = t1.destination);
     """
     con.execute(query)
 
