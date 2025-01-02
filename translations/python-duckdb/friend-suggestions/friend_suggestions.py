@@ -15,11 +15,16 @@ def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
     con.execute(query)
 
-def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
-    table_swap = f"{table1}_swap"
-    con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
-    con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
-    con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
+def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
+    query = f"DELETE FROM {left_table};"
+    con.execute(query)
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {left_table}({columns})
+        SELECT {columns} 
+        FROM {right_table};
+    """
+    con.execute(query)
 
 def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
@@ -50,7 +55,7 @@ data_load = """
 con.execute(data_load)
 
 
-# Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
+# [5] Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
 # Ideally would not need the DISTINCT ...
 query = """
     INSERT INTO suggestion(friend, newfriend)
@@ -66,7 +71,7 @@ query = """
     """
 con.execute(query)
 
-# $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
+# [23] $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
 query = """
     INSERT INTO zresult(friend, newfriend)
     SELECT 
@@ -76,21 +81,21 @@ query = """
     """
 con.execute(query)
 
-# merge $Result into delta_$Result;
+# [27] merge $Result into delta_$Result;
 merge_into(con, src='zresult', dest='delta_zresult', cols=['friend', 'newfriend'])
 
-# merge Suggestion into delta_Suggestion;
+# [28] merge Suggestion into delta_Suggestion;
 merge_into(con, src='suggestion', dest='delta_suggestion', cols=['friend', 'newfriend'])
 
 delta_zresult_empty, delta_suggestion_empty = False, False
 while not (delta_zresult_empty and delta_suggestion_empty):
-    # purge new_$Result;
+    # [30] purge new_$Result;
     purge_table(con, "new_zresult")
-    # purge new_Suggestion;
+    # [31] purge new_Suggestion;
     purge_table(con, "new_suggestion")
 
-    # Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
-    # $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
+    # [32] Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
+    # [33] $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
     
     query = """
         INSERT INTO new_zresult(friend, newfriend)
@@ -103,14 +108,17 @@ while not (delta_zresult_empty and delta_suggestion_empty):
     con.execute(query)
 
 
-    # merge new_$Result into $Result;
+    # [39] merge new_$Result into $Result;
     merge_into(con, src='new_zresult', dest='zresult', cols=['friend', 'newfriend'])
 
-    # merge new_Suggestion into Suggestion;
+    # [40] merge new_Suggestion into Suggestion;
     merge_into(con, src='new_suggestion', dest='suggestion', cols=['friend', 'newfriend'])
     
-    swap(con, "new_zresult", "delta_zresult")
-    swap(con, "new_suggestion", "delta_suggestion")
+    # [41] delta_$Result := new_$Result;
+    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['friend', 'newfriend'])
+    
+    # [42] delta_Suggestion := new_Suggestion
+    bind_table(con, left_table="delta_suggestion", right_table="new_suggestion", cols=['friend', 'newfriend'])
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")
     delta_suggestion_empty = table_is_empty(con, "delta_suggestion")

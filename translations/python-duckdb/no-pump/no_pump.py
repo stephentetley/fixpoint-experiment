@@ -17,12 +17,16 @@ def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
     con.execute(query)
 
-
-def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
-    table_swap = f"{table1}_swap"
-    con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
-    con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
-    con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
+def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
+    query = f"DELETE FROM {left_table};"
+    con.execute(query)
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {left_table}({columns})
+        SELECT {columns} 
+        FROM {right_table};
+    """
+    con.execute(query)
 
 def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
@@ -80,7 +84,7 @@ while not (delta_has_pump_empty):
     merge_into(con, src='new_has_pump', dest='has_pump', cols=['floc'])
 
     # delta_HasPump := new_HasPump
-    swap(con, "new_has_pump", "delta_has_pump")
+    bind_table(con, left_table="delta_has_pump", right_table="new_has_pump", cols=['floc'])
     
 
     delta_has_pump_empty = table_is_empty(con, "delta_has_pump")
@@ -140,10 +144,10 @@ while not (delta_zresult_empty and delta_no_pump_empty):
     merge_into(con, src='new_no_pump', dest='no_pump', cols=['floc'])
 
     # delta_$Result := new_$Result;
-    swap(con, "new_zresult", "delta_zresult")
+    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['floc'])
 
     # delta_NoPump := new_NoPump
-    swap(con, "new_no_pump", "delta_no_pump")
+    bind_table(con, left_table="delta_no_pump", right_table="new_no_pump", cols=['floc'])
     
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")

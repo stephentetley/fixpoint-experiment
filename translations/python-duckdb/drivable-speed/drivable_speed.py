@@ -16,11 +16,16 @@ def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"DELETE FROM {table};"
     con.execute(query)
 
-def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
-    table_swap = f"{table1}_swap"
-    con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
-    con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
-    con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
+def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
+    query = f"DELETE FROM {left_table};"
+    con.execute(query)
+    columns = ", ".join(cols)
+    query = f"""
+        INSERT INTO {left_table}({columns})
+        SELECT {columns} 
+        FROM {right_table};
+    """
+    con.execute(query)
 
 
 def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
@@ -32,7 +37,7 @@ def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
 con = duckdb.connect()
 
 # param... 45 is drivable, 55 isn't
-drivable_speed = 55
+drivable_speed = 45
 
 print(f"Is drivable at {drivable_speed}? ... check result table has an entry:")
 
@@ -147,9 +152,9 @@ while not (delta_zresult_empty and delta_path_empty):
     
 
     # [51] delta_$Result := new_$Result;
-    swap(con, "delta_zresult", "new_zresult")
+    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['result'])
     # [52] delta_Path := new_Path
-    swap(con, "delta_path", "new_path")
+    bind_table(con, left_table="delta_path", right_table="new_path", cols=['source', 'destination'])
 
     delta_zresult_empty = table_is_empty(con, "delta_zresult")
     delta_path_empty = table_is_empty(con, "delta_path")
