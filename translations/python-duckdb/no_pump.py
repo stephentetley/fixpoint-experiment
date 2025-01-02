@@ -1,37 +1,6 @@
 # A "design rule" checker to assert a pump system has a child equipment pump
 import duckdb
-
-
-# merge - src and dest columns must have the same names
-def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
-    columns = ", ".join(cols)
-    query = f"""
-        INSERT INTO {dest}({columns})
-        SELECT {columns} 
-        FROM {src}
-        ANTI JOIN {dest} USING({columns})
-    """
-    con.execute(query)
-
-def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
-    query = f"DELETE FROM {table};"
-    con.execute(query)
-
-def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
-    query = f"DELETE FROM {left_table};"
-    con.execute(query)
-    columns = ", ".join(cols)
-    query = f"""
-        INSERT INTO {left_table}({columns})
-        SELECT {columns} 
-        FROM {right_table};
-    """
-    con.execute(query)
-
-def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
-    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
-    ans1 = con.execute(query).fetchone()
-    return (ans1[0] == 0)
+import ram_machine.prelude as ram
 
 con = duckdb.connect()
 
@@ -73,21 +42,21 @@ project_into_HasPump1 = """
 con.execute(project_into_HasPump1)
 
 #  merge HasPump into delta_HasPump;
-merge_into(con, src='has_pump', dest='delta_has_pump', cols=['floc'])
+ram.merge_into(con, src='has_pump', dest='delta_has_pump', cols=['floc'])
 
 delta_has_pump_empty = False
 while not (delta_has_pump_empty):
     # purge new_HasPump;
-    purge_table(con, "new_has_pump")
+    ram.purge_table(con, "new_has_pump")
 
     # merge new_HasPump into HasPump;
-    merge_into(con, src='new_has_pump', dest='has_pump', cols=['floc'])
+    ram.merge_into(con, src='new_has_pump', dest='has_pump', cols=['floc'])
 
     # delta_HasPump := new_HasPump
-    bind_table(con, left_table="delta_has_pump", right_table="new_has_pump", cols=['floc'])
+    ram.bind_table(con, left_table="delta_has_pump", right_table="new_has_pump", cols=['floc'])
     
 
-    delta_has_pump_empty = table_is_empty(con, "delta_has_pump")
+    delta_has_pump_empty = ram.table_is_empty(con, "delta_has_pump")
     print(f"empty_deltas: {delta_has_pump_empty}")
 
 # $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
@@ -111,19 +80,19 @@ project_into_no_pump1 = """
 con.execute(project_into_no_pump1)
 
 # merge $Result into delta_$Result;
-merge_into(con, src='zresult', dest='delta_zresult', cols=['floc'])
+ram.merge_into(con, src='zresult', dest='delta_zresult', cols=['floc'])
 
 # merge NoPump into delta_NoPump;
-merge_into(con, src='no_pump', dest='delta_no_pump', cols=['floc'])
+ram.merge_into(con, src='no_pump', dest='delta_no_pump', cols=['floc'])
 
 
 delta_zresult_empty, delta_no_pump_empty = False, False
 while not (delta_zresult_empty and delta_no_pump_empty):
     # purge new_$Result;
-    purge_table(con, "new_zresult")
+    ram.purge_table(con, "new_zresult")
 
     # purge new_NoPump;
-    purge_table(con, "new_no_pump")
+    ram.purge_table(con, "new_no_pump")
 
     # $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
     project_into_new_zresult1 = """
@@ -137,21 +106,21 @@ while not (delta_zresult_empty and delta_no_pump_empty):
 
     # NoPump(VarSym(floc)) :- System(VarSym(floc), BoxedObject((SPMS, Obj -> Obj)), _), not HasPump(VarSym(floc)).;
     # merge new_$Result into $Result;
-    merge_into(con, src='new_zresult', dest='zresult', cols=['floc'])
+    ram.merge_into(con, src='new_zresult', dest='zresult', cols=['floc'])
     
 
     # merge new_NoPump into NoPump;
-    merge_into(con, src='new_no_pump', dest='no_pump', cols=['floc'])
+    ram.merge_into(con, src='new_no_pump', dest='no_pump', cols=['floc'])
 
     # delta_$Result := new_$Result;
-    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['floc'])
+    ram.bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['floc'])
 
     # delta_NoPump := new_NoPump
-    bind_table(con, left_table="delta_no_pump", right_table="new_no_pump", cols=['floc'])
+    ram.bind_table(con, left_table="delta_no_pump", right_table="new_no_pump", cols=['floc'])
     
 
-    delta_zresult_empty = table_is_empty(con, "delta_zresult")
-    delta_no_pump_empty = table_is_empty(con, "delta_no_pump")
+    delta_zresult_empty = ram.table_is_empty(con, "delta_zresult")
+    delta_no_pump_empty = ram.table_is_empty(con, "delta_no_pump")
     print(f"empty_deltas: {delta_zresult_empty}, {delta_no_pump_empty}")
 
 print("zresult")

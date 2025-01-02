@@ -1,37 +1,6 @@
 import duckdb
+import ram_machine.prelude as ram
 
-# merge - src and dest columns must have the same names
-def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
-    columns = ", ".join(cols)
-    query = f"""
-        INSERT INTO {dest}({columns})
-        SELECT {columns} 
-        FROM {src}
-        ANTI JOIN {dest} USING({columns});
-    """
-    con.execute(query)
-
-def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
-    query = f"DELETE FROM {table};"
-    con.execute(query)
-
-def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
-    query = f"DELETE FROM {left_table};"
-    con.execute(query)
-    columns = ", ".join(cols)
-    query = f"""
-        INSERT INTO {left_table}({columns})
-        SELECT {columns} 
-        FROM {right_table};
-    """
-    con.execute(query)
-
-
-
-def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
-    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
-    ans1 = con.execute(query).fetchone()
-    return (ans1[0] == 0)
 
 con = duckdb.connect()
 
@@ -95,14 +64,14 @@ query = """
 con.execute(query)
 
 # [35] merge ReadyDate into delta_ReadyDate;
-merge_into(con, src='ready_date', dest='delta_ready_date', cols=['part', 'days'])
+ram.merge_into(con, src='ready_date', dest='delta_ready_date', cols=['part', 'days'])
 
 
 
 delta_ready_date_empty = False
 while not (delta_ready_date_empty):
     # [37] urge new_ready_date
-    purge_table(con, "new_ready_date")
+    ram.purge_table(con, "new_ready_date")
 
     # [38] ReadyDate(VarSym(part); VarSym(date)) :- DeliveryDate(VarSym(part); VarSym(date)).;
     query = """
@@ -140,12 +109,12 @@ while not (delta_ready_date_empty):
     con.execute(query)
 
     # [54] merge new_ReadyDate into ReadyDate;
-    merge_into(con, src='new_ready_date', dest='ready_date', cols=['part', 'days'])
+    ram.merge_into(con, src='new_ready_date', dest='ready_date', cols=['part', 'days'])
     
     # [55] delta_ReadyDate := new_ReadyDate
-    bind_table(con, left_table="delta_ready_date", right_table="new_ready_date", cols=['part', 'days'])
+    ram.bind_table(con, left_table="delta_ready_date", right_table="new_ready_date", cols=['part', 'days'])
 
-    delta_ready_date_empty = table_is_empty(con, "delta_ready_date")
+    delta_ready_date_empty = ram.table_is_empty(con, "delta_ready_date")
     print(f"empty_deltas: {delta_ready_date_empty}")
 
 
@@ -160,7 +129,7 @@ query = """
 con.execute(query)
 
 # [61] merge $Result into delta_$Result;
-merge_into(con, src='zresult', dest='delta_zresult', cols=['part', 'days'])
+ram.merge_into(con, src='zresult', dest='delta_zresult', cols=['part', 'days'])
 
 
 
@@ -168,7 +137,7 @@ delta_zresult_empty = False
 while not (delta_zresult_empty):
 
     # [63] purge new_$Result;
-    purge_table(con, "new_zresult")
+    ram.purge_table(con, "new_zresult")
 
     # [64] $Result(VarSym(c), VarSym(d)) :- fix ReadyDate(VarSym(c); VarSym(d)).;
     query = """
@@ -186,15 +155,14 @@ while not (delta_zresult_empty):
     con.execute(query)
 
     # [70] merge new_$Result into $Result;
-    merge_into(con, src='new_zresult', dest='zresult', cols=['part', 'days'])
+    ram.merge_into(con, src='new_zresult', dest='zresult', cols=['part', 'days'])
     
     # [71] delta_$Result := new_$Result
-    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['part', 'days'])
+    ram.bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['part', 'days'])
     
 
-    delta_zresult_empty = table_is_empty(con, "delta_zresult")
+    delta_zresult_empty = ram.table_is_empty(con, "delta_zresult")
     print(f"empty_deltas: {delta_zresult_empty}")
-
 
 
 print("zresult")

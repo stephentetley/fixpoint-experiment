@@ -1,38 +1,7 @@
 
 import duckdb
+import ram_machine.prelude as ram
 
-# merge - src and dest columns must have the same names
-def merge_into(con, *, src: str, dest:str, cols: list[str]) -> None:
-    columns = ", ".join(cols)
-    query = f"""
-        INSERT INTO {dest}({columns})
-        SELECT {columns} 
-        FROM {src}
-        ANTI JOIN {dest} USING({columns})
-    """
-    con.execute(query)
-
-def purge_table(con: duckdb.DuckDBPyConnection, table: str) -> bool:
-    query = f"DELETE FROM {table};"
-    con.execute(query)
-
-def bind_table(con: duckdb.DuckDBPyConnection, left_table: str, right_table: str, cols: list[str]) -> None:
-    query = f"DELETE FROM {left_table};"
-    con.execute(query)
-    columns = ", ".join(cols)
-    query = f"""
-        INSERT INTO {left_table}({columns})
-        SELECT {columns} 
-        FROM {right_table};
-    """
-    con.execute(query)
-
-
-def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
-    query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
-    ans1 = con.execute(query).fetchone()
-    return (ans1[0] == 0)
-    
 
 con = duckdb.connect()
 
@@ -105,18 +74,18 @@ query = """
 con.execute(query)
 
 # [29] merge $Result into delta_$Result;
-merge_into(con, src='zresult', dest='delta_zresult', cols=['result'])
+ram.merge_into(con, src='zresult', dest='delta_zresult', cols=['result'])
 
 # [30] merge Path into delta_Path;
-merge_into(con, src='path', dest='delta_path', cols=['source', 'destination'])
+ram.merge_into(con, src='path', dest='delta_path', cols=['source', 'destination'])
 
 
 delta_zresult_empty, delta_path_empty = False, False
 while not (delta_zresult_empty and delta_path_empty):
     # [32] purge new_$Result;
-    purge_table(con, "new_zresult")
+    ram.purge_table(con, "new_zresult")
     # [33] purge new_Path;
-    purge_table(con, "new_path")
+    ram.purge_table(con, "new_path")
 
     # [34] $Result(BoxedObject(((), Obj -> Obj))) :- Path(BoxedObject((Rome, Obj -> Obj)), BoxedObject((Florence, Obj -> Obj))).;
     query = """
@@ -145,21 +114,20 @@ while not (delta_zresult_empty and delta_path_empty):
     con.execute(query)
 
     # [49] merge new_$Result into $Result;
-    merge_into(con, src='new_zresult', dest='zresult', cols=['result'])
+    ram.merge_into(con, src='new_zresult', dest='zresult', cols=['result'])
 
     # [50] merge new_Path into Path;
-    merge_into(con, src='new_path', dest='path', cols=['source', 'destination'])
+    ram.merge_into(con, src='new_path', dest='path', cols=['source', 'destination'])
     
 
     # [51] delta_$Result := new_$Result;
-    bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['result'])
+    ram.bind_table(con, left_table="delta_zresult", right_table="new_zresult", cols=['result'])
     # [52] delta_Path := new_Path
-    bind_table(con, left_table="delta_path", right_table="new_path", cols=['source', 'destination'])
+    ram.bind_table(con, left_table="delta_path", right_table="new_path", cols=['source', 'destination'])
 
-    delta_zresult_empty = table_is_empty(con, "delta_zresult")
-    delta_path_empty = table_is_empty(con, "delta_path")
+    delta_zresult_empty = ram.table_is_empty(con, "delta_zresult")
+    delta_path_empty = ram.table_is_empty(con, "delta_path")
     print(f"empty_deltas: {delta_zresult_empty}, {delta_path_empty}")
-
 
 
 print("zresult")
