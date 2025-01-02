@@ -74,8 +74,8 @@ project_into_no_pump1 = """
     SELECT DISTINCT
         t0.floc AS floc,
     FROM system t0
-    WHERE NOT EXISTS (SELECT * FROM has_pump s0 WHERE s0.floc = t0.floc)
-    AND t0.ty = 'SPMS';
+    ANTI JOIN has_pump USING (floc)
+    WHERE t0.ty = 'SPMS';
 """
 con.execute(project_into_no_pump1)
 
@@ -100,7 +100,7 @@ while not (delta_zresult_empty and delta_no_pump_empty):
         SELECT 
             t0.floc AS floc,
         FROM delta_no_pump t0
-        WHERE NOT EXISTS (SELECT * FROM zresult s0 WHERE s0.floc = t0.floc)
+        ANTI JOIN zresult USING (floc)
         """
     con.execute(project_into_new_zresult1)
 

@@ -44,8 +44,7 @@ query = """
         'unit' AS result
     FROM road t0
     WHERE t0.source = 'Rome'
-    AND t0.destination = 'Florence'
-    ON CONFLICT DO NOTHING;
+    AND t0.destination = 'Florence';
 """
 con.execute(query)
 
@@ -56,8 +55,7 @@ query = """
         t0.source AS source,
         t0.destination AS destination,
     FROM road t0
-    WHERE pred1(t0.max_speed)
-    ON CONFLICT DO NOTHING;
+    WHERE pred1(t0.max_speed);
 """
 con.execute(query)
 
@@ -68,8 +66,7 @@ query = """
         t0.source AS source,
         t1.destination AS destination,
     FROM path t0
-    JOIN road t1 ON t1.source = t0.destination AND pred1(t1.max_speed)
-    ON CONFLICT DO NOTHING;
+    JOIN road t1 ON t1.source = t0.destination AND pred1(t1.max_speed);
 """
 con.execute(query)
 
@@ -95,8 +92,7 @@ while not (delta_zresult_empty and delta_path_empty):
         FROM path t0
         WHERE NOT EXISTS (SELECT * FROM zresult)
         AND t0.source == 'Rome'
-        AND t0.destination == 'Florence'
-        ON CONFLICT DO NOTHING;
+        AND t0.destination == 'Florence';
     """
     con.execute(query)
 
@@ -108,7 +104,8 @@ while not (delta_zresult_empty and delta_path_empty):
             t0.source AS source,
             t1.destination AS destination,
         FROM delta_path t0
-        JOIN road t1 ON t1.SOURCE = t0.destination AND pred1(t1.max_speed) AND NOT EXISTS (SELECT * FROM path s0 WHERE s0.source = t0.source AND s0.destination = t1.destination)
+        JOIN road t1 ON t1.SOURCE = t0.destination AND pred1(t1.max_speed) 
+        ANTI JOIN path t2 ON (t2.source = t0.source AND t2.destination = t1.destination)
         ON CONFLICT DO NOTHING;
     """
     con.execute(query)

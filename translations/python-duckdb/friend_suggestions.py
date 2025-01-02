@@ -67,14 +67,13 @@ while not (delta_zresult_empty and delta_suggestion_empty):
 
     # [32] Suggestion(VarSym(me), VarSym(nf)) :- Friend(VarSym(me), VarSym(f1)), Friend(VarSym(me), VarSym(f2)), Friend(VarSym(me), VarSym(f3)), Friend(VarSym(f1), VarSym(nf)), Friend(VarSym(f2), VarSym(nf)), Friend(VarSym(f3), VarSym(nf)), <clo>(VarSym(f2), VarSym(f1), VarSym(f3)), not Friend(VarSym(me), VarSym(nf)).;
     # [33] $Result(VarSym(x), VarSym(y)) :- Suggestion(VarSym(x), VarSym(y)).;
-    
     query = """
         INSERT INTO new_zresult(friend, newfriend)
         SELECT 
             t0.friend AS friend,
             t0.newfriend AS newfriend,
         FROM delta_suggestion t0
-        WHERE NOT EXISTS (SELECT * FROM zresult s0 WHERE s0.friend = t0.friend AND s0.newfriend = t0.newfriend)
+        ANTI JOIN zresult USING (friend, newfriend);
         """
     con.execute(query)
 
