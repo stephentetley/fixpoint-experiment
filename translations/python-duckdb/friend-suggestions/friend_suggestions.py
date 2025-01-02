@@ -3,13 +3,13 @@ import duckdb
 
 # merge and purge are no clearer than using SQL directly
 
-def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
+def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
     table_swap = f"{table1}_swap"
     con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
-def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
     ans1 = con.execute(query).fetchone()
     return (ans1[0] == 0)
@@ -96,11 +96,11 @@ while not (delta_zresult_empty and delta_suggestion_empty):
     # merge new_Suggestion into Suggestion;
     con.execute("INSERT INTO suggestion (friend, newfriend) SELECT friend, newfriend FROM new_suggestion ON CONFLICT DO NOTHING;")
     
-    swap("new_zresult", "delta_zresult", con=con)
-    swap("new_suggestion", "delta_suggestion", con=con)
+    swap(con, "new_zresult", "delta_zresult")
+    swap(con, "new_suggestion", "delta_suggestion")
 
-    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
-    delta_suggestion_empty = table_is_empty("delta_suggestion", con=con)
+    delta_zresult_empty = table_is_empty(con, "delta_zresult")
+    delta_suggestion_empty = table_is_empty(con, "delta_suggestion")
     print(f"empty_deltas: {delta_zresult_empty}, {delta_suggestion_empty}")
 
 

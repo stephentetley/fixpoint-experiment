@@ -3,14 +3,14 @@ import duckdb
 
 # merge and purge are no clearer than using SQL directly
 
-def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
+def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str,) -> None:
     table_swap = f"{table1}_swap"
     con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
 
-def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
     ans1 = con.execute(query).fetchone()
     return (ans1[0] == 0)
@@ -120,9 +120,9 @@ while not (delta_ready_date_empty):
 
     # merge new_ReadyDate into ReadyDate;
     con.execute("INSERT INTO ready_date (part, days) SELECT part, days FROM new_ready_date ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
-    swap("new_ready_date", "delta_ready_date", con=con)
+    swap(con, "new_ready_date", "delta_ready_date")
 
-    delta_ready_date_empty = table_is_empty("delta_ready_date", con=con)
+    delta_ready_date_empty = table_is_empty(con, "delta_ready_date")
     print(f"empty_deltas: {delta_ready_date_empty}")
 
 
@@ -162,9 +162,9 @@ while not (delta_zresult_empty):
 
     # merge new_$Result into $Result;
     con.execute("INSERT INTO zresult (part, days) SELECT part, days FROM new_zresult ON CONFLICT DO UPDATE SET days = EXCLUDED.days;")
-    swap("new_zresult", "delta_zresult", con=con)
+    swap(con, "new_zresult", "delta_zresult")
 
-    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
+    delta_zresult_empty = table_is_empty(con, "delta_zresult")
     print(f"empty_deltas: {delta_zresult_empty}")
 
 

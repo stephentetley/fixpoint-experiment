@@ -3,14 +3,14 @@ import duckdb
 
 # merge and purge are no clearer than using SQL directly
 
-def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
+def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
     table_swap = f"{table1}_swap"
     con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
 
-def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
     ans1 = con.execute(query).fetchone()
     return (ans1[0] == 0)
@@ -130,12 +130,12 @@ while not (delta_zresult_empty and delta_path_empty):
     # [50] merge new_Path into Path;
     con.execute("INSERT INTO path (source, destination) SELECT source, destination FROM new_path ON CONFLICT DO NOTHING;")
     # [51] delta_$Result := new_$Result;
-    swap("delta_zresult", "new_zresult", con=con)
+    swap(con, "delta_zresult", "new_zresult")
     # [52] delta_Path := new_Path
-    swap("delta_path", "new_path", con=con)
+    swap(con, "delta_path", "new_path")
 
-    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
-    delta_path_empty = table_is_empty("delta_path", con=con)
+    delta_zresult_empty = table_is_empty(con, "delta_zresult")
+    delta_path_empty = table_is_empty(con, "delta_path")
     print(f"empty_deltas: {delta_zresult_empty}, {delta_path_empty}")
 
 

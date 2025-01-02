@@ -6,13 +6,13 @@ import duckdb
 # merge and purge are no clearer than using SQL directly
 
 
-def swap(table1: str, table2: str, *, con: duckdb.DuckDBPyConnection) -> None:
+def swap(con: duckdb.DuckDBPyConnection, table1: str, table2: str) -> None:
     table_swap = f"{table1}_swap"
     con.execute(f"ALTER TABLE {table1} RENAME TO {table_swap};")
     con.execute(f"ALTER TABLE {table2} RENAME TO {table1};")
     con.execute(f"ALTER TABLE {table_swap} RENAME TO {table2};")
 
-def table_is_empty(table: str, *, con: duckdb.DuckDBPyConnection) -> bool:
+def table_is_empty(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     query = f"SELECT count(1) WHERE EXISTS (SELECT * FROM {table});"
     ans1 = con.execute(query).fetchone()
     return (ans1[0] == 0)
@@ -68,10 +68,10 @@ while not (delta_has_pump_empty):
     con.execute("INSERT INTO has_pump (floc) SELECT floc FROM new_has_pump ON CONFLICT DO NOTHING;")
 
     # delta_HasPump := new_HasPump
-    swap("new_has_pump", "delta_has_pump", con=con)
+    swap(con, "new_has_pump", "delta_has_pump")
     
 
-    delta_has_pump_empty = table_is_empty("delta_has_pump", con=con)
+    delta_has_pump_empty = table_is_empty(con, "delta_has_pump")
     print(f"empty_deltas: {delta_has_pump_empty}")
 
 # $Result(VarSym(x1)) :- NoPump(VarSym(x1)).;
@@ -126,14 +126,14 @@ while not (delta_zresult_empty and delta_no_pump_empty):
     con.execute("INSERT INTO no_pump (floc) SELECT floc FROM new_no_pump ON CONFLICT DO NOTHING;")
 
     # delta_$Result := new_$Result;
-    swap("new_zresult", "delta_zresult", con=con)
+    swap(con, "new_zresult", "delta_zresult")
 
     # delta_NoPump := new_NoPump
-    swap("new_no_pump", "delta_no_pump", con=con)
+    swap(con, "new_no_pump", "delta_no_pump")
     
 
-    delta_zresult_empty = table_is_empty("delta_zresult", con=con)
-    delta_no_pump_empty = table_is_empty("delta_no_pump", con=con)
+    delta_zresult_empty = table_is_empty(con, "delta_zresult")
+    delta_no_pump_empty = table_is_empty(con, "delta_no_pump")
     print(f"empty_deltas: {delta_zresult_empty}, {delta_no_pump_empty}")
 
 print("zresult")
