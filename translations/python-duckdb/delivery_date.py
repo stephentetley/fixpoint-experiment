@@ -1,6 +1,8 @@
 # Note - the Flix original uses a lattice (Int32) _and_ addition in the rule head for ReadyDate
 # Join (leastUpperBounds) for Int32 is Int32.max(x, y)
 
+# > conda run -n develop-env python delivery_date.py
+
 
 
 import duckdb

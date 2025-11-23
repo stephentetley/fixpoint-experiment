@@ -1,6 +1,6 @@
 // From flix source tree `examples/larger-examples/datalog`
 // This Datalog program has custom conditions in the body predicates
-// The get translated to `<clo>` in the RAM program.
+// They get translated to `<clo>` in the RAM program.
 
 def main(): Int32 \ IO = 
     println("drivable-speed...");
@@ -15,8 +15,8 @@ pub def drivable(source: String, destination: String, minimumSpeed: Int32): Bool
         Road("Turin", 70, "Naples"). 
         Road("Naples", 50, "Florence").
 
-        Path(x, y) :- Road(x, maximumSpeed, y), if maximumSpeed > minimumSpeed.
-        Path(x, z) :- Path(x, y), Road(y, maximumSpeed, z), if maximumSpeed > minimumSpeed.
+        Path(x, y) :- Road(x, maximumSpeed, y), if (maximumSpeed > minimumSpeed).
+        Path(x, z) :- Path(x, y), Road(y, maximumSpeed, z), if (maximumSpeed > minimumSpeed).
     };
     not Vector.isEmpty(query lp select () from Path(source, destination))
 
