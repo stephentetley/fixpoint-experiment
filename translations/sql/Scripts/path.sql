@@ -1,82 +1,27 @@
-CREATE SCHEMA IF NOT EXISTS delivery_date;
+CREATE SCHEMA IF NOT EXISTS paths;
 
-CREATE OR REPLACE TABLE delivery_date.part_depends (
-    part VARCHAR NOT NULL,
-    component VARCHAR NOT NULL,
+CREATE OR REPLACE TABLE paths.edge (
+    edge_from INTEGER NOT NULL,
+    edge_to INTEGER NOT NULL,
 );
 
-
-CREATE OR REPLACE TABLE delivery_date.assembly_time (
-    part VARCHAR NOT NULL, 
-    days INTEGER NOT NULL,
-);
-
-
-CREATE OR REPLACE TABLE delivery_date.delivery_date (
-    component VARCHAR NOT NULL, 
-    days INTEGER NOT NULL,
-);
-
-
-CREATE OR REPLACE TABLE delivery_date.ready_date (
-    part VARCHAR NOT NULL, 
-    days INTEGER NOT NULL, 
-    PRIMARY KEY (part)
-);
-    
-
-DELETE FROM delivery_date.part_depends;
-INSERT INTO delivery_date.part_depends(part, component)
+DELETE FROM paths.edge;
+INSERT INTO paths.edge(edge_from, edge_to)
 VALUES 
-    ('Car', 'Chassis'), 
-    ('Car', 'Engine'), 
-    ('Engine', 'Piston'), 
-    ('Engine', 'Ignition');
-
-DELETE FROM delivery_date.assembly_time;
-INSERT INTO delivery_date.assembly_time (part, days) VALUES 
-    ('Car', 7), 
-    ('Engine', 2);
-
-DELETE FROM delivery_date.delivery_date;
-INSERT INTO delivery_date.delivery_date (component, days) VALUES 
-    ('Chassis', 2), 
-    ('Piston', 1), 
-    ('Ignition', 7);
-
-DELETE FROM delivery_date.ready_date;
-INSERT INTO delivery_date.ready_date
-(SELECT 
-    component AS part,
-    days AS days,
-FROM delivery_date.delivery_date)
-UNION 
-(    SELECT 
-        t0.part AS part,
-        max(t1.days + t2.days) AS days,
-    FROM 
-        delivery_date.part_depends t0
-    JOIN delivery_date.assembly_time t1 ON t1.part = t0.part
-    JOIN delivery_date.ready_date t2 ON t2.part = t0.component
-    GROUP BY t0.part);
+    (1, 2), (2, 3), (3, 4);
 
 
-
-WITH RECURSIVE cte(part, days) USING KEY (part) AS (
-(SELECT 
-    component AS part,
-    days AS days,
-FROM delivery_date.delivery_date
-)
+WITH RECURSIVE cte(path_from, path_to) USING KEY (path_from, path_to) AS (
+    SELECT 
+        b1.edge_from AS path_from,
+        b1.edge_to AS path_to,
+    FROM paths.edge AS b1
 UNION
-(SELECT 
-    t0.part AS part,
-    max(t1.days + t2.days) AS days,
-FROM 
-    delivery_date.part_depends t0
-JOIN delivery_date.assembly_time t1 ON t1.part = t0.part
-JOIN delivery_date.ready_date t2 ON t2.part = t0.component
-GROUP BY t0.part
-))
-SELECT part, days
+    SELECT 
+        t1.edge_from AS path_from,
+        t2.path_to AS path_to,
+    FROM paths.edge AS t1
+    JOIN cte t2 ON t1.edge_to = t2.path_from
+)
+SELECT path_from, path_to 
 FROM cte
